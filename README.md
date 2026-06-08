@@ -10,8 +10,6 @@ To install:
 
 ```
 git clone https://github.com/dani-77/quickshell-d77.git ~/.config/quickshell
-
-cd ~/.config/quickshell
 ```
 
 2 - Execute the shell
