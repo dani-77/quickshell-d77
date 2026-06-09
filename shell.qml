@@ -5,7 +5,41 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 
+// Módulo do launcher nativo (pasta launcher/ ao lado deste shell.qml).
+// Expõe o componente Launcher — ver launcher/README.md para detalhes.
+import "launcher"
+
 ShellRoot {
+
+    // ══════════════════════════════════════════════════════
+    // LAUNCHER DE APLICATIVOS
+    // ══════════════════════════════════════════════════════
+    // Instância única do launcher nativo. Começa invisível e é
+    // mostrado/escondido via appLauncher.toggle(). Reaproveita a
+    // mesma paleta Tokyo Night e a fonte definidas em "g".
+    Launcher {
+        id: appLauncher
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colCyan:   g.colCyan
+        colBlue:   g.colBlue
+        colPurple: g.colPurple
+        font:      g.font
+        fsize:     g.fsize
+        // Terminal usado para apps com Terminal=true (ajuste se necessário).
+        terminal:  "foot"
+    }
+
+    // ── Atalho global do Hyprland ─────────────────────────
+    // Permite abrir/fechar o launcher a partir de um keybind do
+    // Hyprland. No hyprland.conf adicione, por exemplo:
+    //   bind = SUPER, D, global, quickshell:launcher
+    GlobalShortcut {
+        name: "launcher"
+        description: "Abre/fecha o launcher de aplicativos"
+        onPressed: appLauncher.toggle()
+    }
 
     // ══════════════════════════════════════════════════════
     // GLOBAL
@@ -100,12 +134,6 @@ ShellRoot {
         Component.onCompleted: running = true
     }
 
-    // Generic Process Launcher
-    Process {
-        id: launcherProc
-        running: false
-    }
-
     // Workspace Process Switch
     Process {
         id: wsProc
@@ -179,10 +207,8 @@ ShellRoot {
                     id: launchMa
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: {
-                        launcherProc.command = ["fuzzel"]
-                        launcherProc.running = true
-                    }
+                    // Abre/fecha o launcher nativo (antes chamava o "fuzzel").
+                    onClicked: appLauncher.toggle()
                 }
             }
 
@@ -363,22 +389,45 @@ ShellRoot {
     PanelWindow {
         id: sessionPopup
         visible: g.sessionOpen
+        color: "transparent"
 
-        anchors.top:   true
-        anchors.right: true
-        implicitWidth:  150
-        implicitHeight: 220
-        color: Qt.darker(g.colBg, 1.4)
+        // Cobre o ecrã inteiro para centralizar o menu e permitir
+        // fechar clicando em qualquer ponto fora da caixa (igual ao launcher).
+        anchors.top:    true
+        anchors.bottom: true
+        anchors.left:   true
+        anchors.right:  true
 
-        // Close Clicking Outside
-        MouseArea {
+        WlrLayershell.layer:     WlrLayer.Overlay
+        WlrLayershell.namespace: "quickshell-session"
+
+        // Fundo escurecido / clique fora fecha
+        Rectangle {
             anchors.fill: parent
-            onClicked: g.sessionOpen = false
+            color: Qt.rgba(0, 0, 0, 0.35)
+            MouseArea {
+                anchors.fill: parent
+                onClicked: g.sessionOpen = false
+            }
         }
 
-        ColumnLayout {
+        // ── Caixa central do menu de sessão ───────────────
+        Rectangle {
+            id: sessionBox
+            anchors.centerIn: parent
+            width:  220
+            height: 232
+            radius: 12
+            color: Qt.darker(g.colBg, 1.4)
+            border.color: g.colRed
+            border.width: 2
+
+            // Impede que o clique dentro da caixa feche o menu
+            MouseArea { anchors.fill: parent }
+
+            ColumnLayout {
             anchors.fill:    parent
-            anchors.margins: 8
+            anchors.margins: 10
             spacing: 4
 
             // Lock
@@ -504,6 +553,7 @@ ShellRoot {
                     hoverEnabled: true
                     onClicked: { g.sessionOpen = false
                     logoutProc.running = true } }
+            }
             }
         }
     }
