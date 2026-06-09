@@ -31,13 +31,49 @@ ShellRoot {
         terminal:  "foot"
     }
 
-    // ── Atalhos globais do Hyprland ───────────────────────
-    // Permitem acionar o launcher e o menu de sessão a partir de
-    // keybinds do Hyprland, via o dispatcher "global". O prefixo é
-    // o appid (default "quickshell"), por isso os binds ficam:
+    // ══════════════════════════════════════════════════════
+    // IPC (forma recomendada de acionar o launcher/sessão)
+    // ══════════════════════════════════════════════════════
+    // Expõe métodos chamáveis externamente via:
+    //   qs ipc call launcher toggle
+    //   qs ipc call launcher open
+    //   qs ipc call launcher close
+    //   qs ipc call session  toggle | open | close
+    //
+    // É a forma mais fiável de ligar keybinds do Hyprland (em especial
+    // com configs geradas em Lua, onde o dispatcher "global" costuma ser
+    // frágil). No Hyprland basta um simples exec, p.ex.:
+    //   bind = SUPER, D, exec, qs ipc call launcher toggle
+    // Ver KEYBINDS.md para a configuração completa (incl. Lua).
+    IpcHandler {
+        target: "launcher"
+
+        // Alterna a visibilidade do launcher (abre se fechado, fecha se aberto).
+        function toggle(): void { appLauncher.toggle() }
+        // Abre o launcher (e foca o campo de busca).
+        function open(): void { appLauncher.open() }
+        // Fecha o launcher.
+        function close(): void { appLauncher.close() }
+    }
+
+    IpcHandler {
+        target: "session"
+
+        // Alterna a visibilidade do menu de sessão.
+        function toggle(): void { g.sessionOpen = !g.sessionOpen }
+        // Abre o menu de sessão.
+        function open(): void { g.sessionOpen = true }
+        // Fecha o menu de sessão.
+        function close(): void { g.sessionOpen = false }
+    }
+
+    // ── Atalhos globais do Hyprland (fallback) ────────────
+    // Mantidos como alternativa ao IPC. Permitem acionar o launcher e o
+    // menu de sessão via o dispatcher "global". O prefixo é o appid
+    // (default "quickshell"), por isso os binds ficam:
     //   bind = SUPER, D,       global, quickshell:launcher
     //   bind = SUPER SHIFT, E, global, quickshell:session
-    // Ver KEYBINDS.md para a configuração completa (incl. Lua).
+    // Recomenda-se preferir o IPC (acima); ver KEYBINDS.md.
     GlobalShortcut {
         appid: "quickshell"
         name: "launcher"

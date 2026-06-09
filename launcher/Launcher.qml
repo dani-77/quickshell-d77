@@ -52,6 +52,10 @@ PanelWindow {
     function hide() {
         visible = false
     }
+    // Alias público com nome alinhado à API de IPC (toggle/open/close).
+    function close() {
+        hide()
+    }
     function toggle() {
         if (visible) hide()
         else         open()
