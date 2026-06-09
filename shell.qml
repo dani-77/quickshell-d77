@@ -5,7 +5,41 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 
+// Módulo do launcher nativo (pasta launcher/ ao lado deste shell.qml).
+// Expõe o componente Launcher — ver launcher/README.md para detalhes.
+import "launcher"
+
 ShellRoot {
+
+    // ══════════════════════════════════════════════════════
+    // LAUNCHER DE APLICATIVOS
+    // ══════════════════════════════════════════════════════
+    // Instância única do launcher nativo. Começa invisível e é
+    // mostrado/escondido via appLauncher.toggle(). Reaproveita a
+    // mesma paleta Tokyo Night e a fonte definidas em "g".
+    Launcher {
+        id: appLauncher
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colCyan:   g.colCyan
+        colBlue:   g.colBlue
+        colPurple: g.colPurple
+        font:      g.font
+        fsize:     g.fsize
+        // Terminal usado para apps com Terminal=true (ajuste se necessário).
+        terminal:  "foot"
+    }
+
+    // ── Atalho global do Hyprland ─────────────────────────
+    // Permite abrir/fechar o launcher a partir de um keybind do
+    // Hyprland. No hyprland.conf adicione, por exemplo:
+    //   bind = SUPER, D, global, quickshell:launcher
+    GlobalShortcut {
+        name: "launcher"
+        description: "Abre/fecha o launcher de aplicativos"
+        onPressed: appLauncher.toggle()
+    }
 
     // ══════════════════════════════════════════════════════
     // GLOBAL
@@ -100,12 +134,6 @@ ShellRoot {
         Component.onCompleted: running = true
     }
 
-    // Generic Process Launcher
-    Process {
-        id: launcherProc
-        running: false
-    }
-
     // Workspace Process Switch
     Process {
         id: wsProc
@@ -179,10 +207,8 @@ ShellRoot {
                     id: launchMa
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: {
-                        launcherProc.command = ["fuzzel"]
-                        launcherProc.running = true
-                    }
+                    // Abre/fecha o launcher nativo (antes chamava o "fuzzel").
+                    onClicked: appLauncher.toggle()
                 }
             }
 
