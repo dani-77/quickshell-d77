@@ -447,6 +447,18 @@ ShellRoot {
 
         WlrLayershell.layer:     WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-session"
+        // Pede foco de teclado exclusivo ao compositor enquanto o menu
+        // está aberto, permitindo a navegação por teclado (setas/Enter/Esc).
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+
+        // Ao abrir, repõe a seleção no topo e entrega o foco à caixa
+        // para que as teclas sejam recebidas de imediato.
+        onVisibleChanged: {
+            if (visible) {
+                sessionBox.currentIndex = 0
+                sessionBox.forceActiveFocus()
+            }
+        }
 
         // Fundo escurecido / clique fora fecha
         Rectangle {
@@ -469,6 +481,32 @@ ShellRoot {
             border.color: g.colRed
             border.width: 2
 
+            // Índice da opção atualmente selecionada (0..4). Usado tanto
+            // pela navegação por teclado como para o destaque visual.
+            property int currentIndex: 0
+
+            // Processos correspondentes a cada opção, pela mesma ordem
+            // em que aparecem no menu (Lock, Suspend, Reboot, Shutdown, Logout).
+            readonly property var sessionActions: [
+                lockProc, suspendProc, rebootProc, shutdownProc, logoutProc
+            ]
+
+            // Executa a opção atualmente selecionada e fecha o menu.
+            function activateSelected() {
+                g.sessionOpen = false
+                sessionActions[currentIndex].running = true
+            }
+
+            // ── Navegação por teclado ─────────────────────────
+            // Recebe foco para captar as teclas (ver forceActiveFocus
+            // disparado no onVisibleChanged do PanelWindow).
+            focus: true
+            Keys.onUpPressed:     currentIndex = (currentIndex - 1 + sessionActions.length) % sessionActions.length
+            Keys.onDownPressed:   currentIndex = (currentIndex + 1) % sessionActions.length
+            Keys.onEscapePressed: g.sessionOpen = false
+            Keys.onReturnPressed: activateSelected()
+            Keys.onEnterPressed:  activateSelected()
+
             // Impede que o clique dentro da caixa feche o menu
             MouseArea { anchors.fill: parent }
 
@@ -482,7 +520,7 @@ ShellRoot {
                 Layout.fillWidth: true
                     height: 36
                     radius: 6
-                color: ma0.containsMouse ? Qt.rgba(0.48, 0.64, 0.97, 0.2) : "transparent"
+                color: (ma0.containsMouse || sessionBox.currentIndex === 0) ? Qt.rgba(0.48, 0.64, 0.97, 0.2) : "transparent"
                 RowLayout { anchors.fill: parent
                     anchors.leftMargin: 10
                     spacing: 8
@@ -498,6 +536,7 @@ ShellRoot {
                 MouseArea { id: ma0
                     anchors.fill: parent
                     hoverEnabled: true
+                    onEntered: sessionBox.currentIndex = 0
                     onClicked: { g.sessionOpen = false
                     lockProc.running = true } }
             }
@@ -507,7 +546,7 @@ ShellRoot {
                 Layout.fillWidth: true
                     height: 36
                     radius: 6
-                color: ma1.containsMouse ? Qt.rgba(0.88, 0.69, 0.41, 0.2) : "transparent"
+                color: (ma1.containsMouse || sessionBox.currentIndex === 1) ? Qt.rgba(0.88, 0.69, 0.41, 0.2) : "transparent"
                 RowLayout { anchors.fill: parent
                     anchors.leftMargin: 10
                     spacing: 8
@@ -523,6 +562,7 @@ ShellRoot {
                 MouseArea { id: ma1
                     anchors.fill: parent
                     hoverEnabled: true
+                    onEntered: sessionBox.currentIndex = 1
                     onClicked: { g.sessionOpen = false
                     suspendProc.running = true } }
             }
@@ -532,7 +572,7 @@ ShellRoot {
                 Layout.fillWidth: true
                     height: 36
                     radius: 6
-                color: ma2.containsMouse ? Qt.rgba(0.88, 0.69, 0.41, 0.2) : "transparent"
+                color: (ma2.containsMouse || sessionBox.currentIndex === 2) ? Qt.rgba(0.88, 0.69, 0.41, 0.2) : "transparent"
                 RowLayout { anchors.fill: parent
                     anchors.leftMargin: 10
                     spacing: 8
@@ -548,6 +588,7 @@ ShellRoot {
                 MouseArea { id: ma2
                     anchors.fill: parent
                     hoverEnabled: true
+                    onEntered: sessionBox.currentIndex = 2
                     onClicked: { g.sessionOpen = false
                     rebootProc.running = true } }
             }
@@ -557,7 +598,7 @@ ShellRoot {
                 Layout.fillWidth: true
                     height: 36
                     radius: 6
-                color: ma3.containsMouse ? Qt.rgba(0.97, 0.46, 0.56, 0.2) : "transparent"
+                color: (ma3.containsMouse || sessionBox.currentIndex === 3) ? Qt.rgba(0.97, 0.46, 0.56, 0.2) : "transparent"
                 RowLayout { anchors.fill: parent
                     anchors.leftMargin: 10
                     spacing: 8
@@ -573,6 +614,7 @@ ShellRoot {
                 MouseArea { id: ma3
                     anchors.fill: parent
                     hoverEnabled: true
+                    onEntered: sessionBox.currentIndex = 3
                     onClicked: { g.sessionOpen = false
                     shutdownProc.running = true } }
             }
@@ -582,7 +624,7 @@ ShellRoot {
                 Layout.fillWidth: true
                     height: 36
                     radius: 6
-                color: ma4.containsMouse ? Qt.rgba(0.27, 0.29, 0.42, 0.5) : "transparent"
+                color: (ma4.containsMouse || sessionBox.currentIndex === 4) ? Qt.rgba(0.27, 0.29, 0.42, 0.5) : "transparent"
                 RowLayout { anchors.fill: parent
                     anchors.leftMargin: 10
                     spacing: 8
@@ -598,6 +640,7 @@ ShellRoot {
                 MouseArea { id: ma4
                     anchors.fill: parent
                     hoverEnabled: true
+                    onEntered: sessionBox.currentIndex = 4
                     onClicked: { g.sessionOpen = false
                     logoutProc.running = true } }
             }
