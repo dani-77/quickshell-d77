@@ -31,14 +31,25 @@ ShellRoot {
         terminal:  "foot"
     }
 
-    // ── Atalho global do Hyprland ─────────────────────────
-    // Permite abrir/fechar o launcher a partir de um keybind do
-    // Hyprland. No hyprland.conf adicione, por exemplo:
-    //   bind = SUPER, D, global, quickshell:launcher
+    // ── Atalhos globais do Hyprland ───────────────────────
+    // Permitem acionar o launcher e o menu de sessão a partir de
+    // keybinds do Hyprland, via o dispatcher "global". O prefixo é
+    // o appid (default "quickshell"), por isso os binds ficam:
+    //   bind = SUPER, D,       global, quickshell:launcher
+    //   bind = SUPER SHIFT, E, global, quickshell:session
+    // Ver KEYBINDS.md para a configuração completa (incl. Lua).
     GlobalShortcut {
+        appid: "quickshell"
         name: "launcher"
         description: "Abre/fecha o launcher de aplicativos"
         onPressed: appLauncher.toggle()
+    }
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "session"
+        description: "Abre/fecha o menu de sessão (lock/suspend/reboot/...)"
+        onPressed: g.sessionOpen = !g.sessionOpen
     }
 
     // ══════════════════════════════════════════════════════
