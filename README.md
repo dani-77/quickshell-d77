@@ -31,18 +31,23 @@ written entirely in QML — no external dependencies. It is already wired into
 
 Detailed module documentation lives in [`launcher/README.md`](launcher/README.md).
 
-### Hyprland global shortcut
+### Hyprland global shortcuts
 
-`shell.qml` registers a Quickshell `GlobalShortcut` named `launcher`. To toggle
-the launcher with `SUPER + D`, add this line to your `hyprland.conf`:
+`shell.qml` registers two Quickshell `GlobalShortcut`s: `launcher` and
+`session`. To bind them, add to your `hyprland.conf`:
 
 ```
-bind = SUPER, D, global, quickshell:launcher
+bind = SUPER, D, global, quickshell:launcher      # application launcher
+bind = SUPER SHIFT, E, global, quickshell:session # session menu
 ```
 
-The format is `quickshell:<name>`, where `<name>` matches the `GlobalShortcut`
-`name` property declared in `shell.qml`. Reload Hyprland (`hyprctl reload`) and
-press the keybind to open the launcher.
+The format is `<appid>:<name>` (default `appid` is `quickshell`), matching the
+`GlobalShortcut` declared in `shell.qml`. Reload Hyprland (`hyprctl reload`) and
+press the keybind.
+
+> 📖 Full keybind setup — including **Hyprland 0.55 with Lua** configs and how
+> to verify the shortcuts are registered (`hyprctl globalshortcuts`) — is in
+> [`KEYBINDS.md`](KEYBINDS.md).
 
 ### Launcher keybindings
 
