@@ -389,22 +389,45 @@ ShellRoot {
     PanelWindow {
         id: sessionPopup
         visible: g.sessionOpen
+        color: "transparent"
 
-        anchors.top:   true
-        anchors.right: true
-        implicitWidth:  150
-        implicitHeight: 220
-        color: Qt.darker(g.colBg, 1.4)
+        // Cobre o ecrã inteiro para centralizar o menu e permitir
+        // fechar clicando em qualquer ponto fora da caixa (igual ao launcher).
+        anchors.top:    true
+        anchors.bottom: true
+        anchors.left:   true
+        anchors.right:  true
 
-        // Close Clicking Outside
-        MouseArea {
+        WlrLayershell.layer:     WlrLayer.Overlay
+        WlrLayershell.namespace: "quickshell-session"
+
+        // Fundo escurecido / clique fora fecha
+        Rectangle {
             anchors.fill: parent
-            onClicked: g.sessionOpen = false
+            color: Qt.rgba(0, 0, 0, 0.35)
+            MouseArea {
+                anchors.fill: parent
+                onClicked: g.sessionOpen = false
+            }
         }
 
-        ColumnLayout {
+        // ── Caixa central do menu de sessão ───────────────
+        Rectangle {
+            id: sessionBox
+            anchors.centerIn: parent
+            width:  220
+            height: 232
+            radius: 12
+            color: Qt.darker(g.colBg, 1.4)
+            border.color: g.colRed
+            border.width: 2
+
+            // Impede que o clique dentro da caixa feche o menu
+            MouseArea { anchors.fill: parent }
+
+            ColumnLayout {
             anchors.fill:    parent
-            anchors.margins: 8
+            anchors.margins: 10
             spacing: 4
 
             // Lock
@@ -530,6 +553,7 @@ ShellRoot {
                     hoverEnabled: true
                     onClicked: { g.sessionOpen = false
                     logoutProc.running = true } }
+            }
             }
         }
     }
