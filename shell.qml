@@ -189,7 +189,7 @@ ShellRoot {
 
     // Session Process
     Process { id: lockProc
-                        command: ["loginctl", "lock-session"]
+                        command: ["hyprlock"]
                       running: false }
     Process { id: suspendProc
                      command: ["loginctl", "suspend"]
