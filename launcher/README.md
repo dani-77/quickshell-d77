@@ -1,45 +1,45 @@
-# Módulo `launcher`
+# `launcher` Module
 
-Launcher de aplicativos estilo **Rofi / Fuzzel**, escrito 100% em QML/Quickshell —
-sem dependências externas. Ele varre os arquivos `.desktop` do sistema, exibe uma
-janela flutuante centralizada com campo de busca e lista navegável por teclado, e
-executa o aplicativo selecionado.
+A **Rofi / Fuzzel**-style application launcher, written 100% in QML/Quickshell —
+with no external dependencies. It scans the system's `.desktop` files, displays a
+centered floating window with a search field and a keyboard-navigable list, and
+runs the selected application.
 
 ![sample](../sample.png)
 
-## Conteúdo do módulo
+## Module contents
 
-| Arquivo                  | Responsabilidade |
+| File                     | Responsibility |
 |--------------------------|------------------|
-| `Launcher.qml`           | Componente principal: janela (layer-shell `Overlay`), busca e lista de resultados. |
-| `AppLoader.qml`          | Junta o scanner ao parser e expõe a lista de apps + `filter()`. |
-| `DesktopDirScanner.qml`  | Varre os diretórios padrão e devolve o conteúdo bruto dos `.desktop`. |
-| `desktopParser.js`       | Biblioteca JS que faz o parse dos `.desktop` e a filtragem. |
-| `qmldir`                 | Definição do módulo (expõe os componentes acima). |
-| `example-integration.qml`| Exemplo de como ativar o launcher a partir do `shell.qml`. |
+| `Launcher.qml`           | Main component: window (layer-shell `Overlay`), search and results list. |
+| `AppLoader.qml`          | Connects the scanner to the parser and exposes the app list + `filter()`. |
+| `DesktopDirScanner.qml`  | Scans the default directories and returns the raw contents of the `.desktop` files. |
+| `desktopParser.js`       | JS library that parses the `.desktop` files and handles filtering. |
+| `qmldir`                 | Module definition (exposes the components above). |
+| `example-integration.qml`| Example of how to enable the launcher from `shell.qml`. |
 
-## Como funciona
+## How it works
 
 ```
-DesktopDirScanner  ──(texto bruto)──▶  desktopParser.js  ──(array de apps)──▶  AppLoader  ──▶  Launcher
+DesktopDirScanner  ──(raw text)──▶  desktopParser.js  ──(array of apps)──▶  AppLoader  ──▶  Launcher
 ```
 
-1. **DesktopDirScanner** roda um `Process` que percorre, em ordem de prioridade:
+1. **DesktopDirScanner** runs a `Process` that traverses, in order of priority:
    - `~/.local/share/applications`
    - `/usr/local/share/applications`
    - `/usr/share/applications`
 
-   e concatena todos os `*.desktop` separados pelo delimitador `===DESKTOP_FILE_START===`.
-2. **desktopParser.js** interpreta a seção `[Desktop Entry]`, limpa os *field codes*
-   do `Exec` (`%U`, `%f`, ...), descarta entradas `NoDisplay`/`Hidden` e ordena por nome.
-3. **AppLoader** mantém o array `apps` e oferece `reload()` e `filter(query)`.
-4. **Launcher** renderiza a UI, faz a filtragem reativa conforme a busca e executa o
-   app via `setsid <exec> &` (apps com `Terminal=true` são abertos no terminal configurado).
+   and concatenates all `*.desktop` files separated by the `===DESKTOP_FILE_START===` delimiter.
+2. **desktopParser.js** interprets the `[Desktop Entry]` section, cleans up the *field codes*
+   from `Exec` (`%U`, `%f`, ...), discards `NoDisplay`/`Hidden` entries and sorts them by name.
+3. **AppLoader** keeps the `apps` array and provides `reload()` and `filter(query)`.
+4. **Launcher** renders the UI, performs reactive filtering as you search, and runs the
+   app via `setsid <exec> &` (apps with `Terminal=true` are opened in the configured terminal).
 
-## Instalação
+## Installation
 
-A pasta `launcher/` deve ficar **ao lado** do seu `shell.qml`
-(por padrão em `~/.config/quickshell/`):
+The `launcher/` folder must sit **next to** your `shell.qml`
+(by default in `~/.config/quickshell/`):
 
 ```
 ~/.config/quickshell/
@@ -52,9 +52,9 @@ A pasta `launcher/` deve ficar **ao lado** do seu `shell.qml`
     └── qmldir
 ```
 
-## Uso
+## Usage
 
-No seu `shell.qml`, importe o módulo pelo caminho relativo e instancie o `Launcher`:
+In your `shell.qml`, import the module by its relative path and instantiate the `Launcher`:
 
 ```qml
 import "launcher"
@@ -62,68 +62,68 @@ import "launcher"
 ShellRoot {
     Launcher { id: appLauncher }
 
-    // Abrir/fechar de qualquer lugar:
+    // Open/close from anywhere:
     // appLauncher.toggle()
 }
 ```
 
-### Abrindo via botão da barra
+### Opening via a bar button
 
-Substitua o clique que chamava o `fuzzel`:
+Replace the click that used to call `fuzzel`:
 
 ```qml
-// Antes:
+// Before:
 // onClicked: { launcherProc.command = ["fuzzel"]; launcherProc.running = true }
 
-// Depois:
+// After:
 onClicked: appLauncher.toggle()
 ```
 
-### Abrindo via atalho global (Hyprland)
+### Opening via a global shortcut (Hyprland)
 
 ```qml
 import Quickshell.Hyprland
 
 GlobalShortcut {
     name: "launcher"
-    description: "Abre o launcher de aplicativos"
+    description: "Opens the application launcher"
     onPressed: appLauncher.toggle()
 }
 ```
 
-E no `hyprland.conf`:
+And in `hyprland.conf`:
 
 ```
 bind = SUPER, D, global, quickshell:launcher
 ```
 
-Veja `example-integration.qml` para um exemplo completo e executável.
+See `example-integration.qml` for a complete, runnable example.
 
-## API pública do `Launcher`
+## Public API of `Launcher`
 
-| Membro          | Tipo       | Descrição |
+| Member          | Type       | Description |
 |-----------------|------------|-----------|
-| `open()`        | função     | Mostra o launcher, recarrega os apps e foca a busca. |
-| `hide()`        | função     | Esconde o launcher. |
-| `toggle()`      | função     | Alterna entre aberto/fechado. |
-| `terminal`      | `string`   | Terminal usado para apps `Terminal=true` (padrão: `"foot"`). |
-| `colBg` … `colPurple` | `color` | Cores do tema (padrão: paleta Tokyo Night, igual ao `shell.qml`). |
-| `font`, `fsize` | `string`/`int` | Fonte e tamanho base. |
+| `open()`        | function   | Shows the launcher, reloads the apps and focuses the search. |
+| `hide()`        | function   | Hides the launcher. |
+| `toggle()`      | function   | Toggles between open/closed. |
+| `terminal`      | `string`   | Terminal used for `Terminal=true` apps (default: `"foot"`). |
+| `colBg` … `colPurple` | `color` | Theme colors (default: Tokyo Night palette, same as `shell.qml`). |
+| `font`, `fsize` | `string`/`int` | Base font and size. |
 
-## Atalhos de teclado
+## Keyboard shortcuts
 
-| Tecla              | Ação |
+| Key                | Action |
 |--------------------|------|
-| Digitar            | Filtra a lista de aplicativos |
-| `↑` / `↓`          | Move a seleção |
-| `Tab`              | Próximo item |
-| `Enter`            | Executa o app selecionado |
-| `Esc`              | Fecha o launcher |
-| Clique fora        | Fecha o launcher |
+| Type               | Filters the application list |
+| `↑` / `↓`          | Moves the selection |
+| `Tab`              | Next item |
+| `Enter`            | Runs the selected app |
+| `Esc`              | Closes the launcher |
+| Click outside      | Closes the launcher |
 
-## Personalização
+## Customization
 
-Todas as propriedades de tema podem ser sobrescritas na instância:
+All theme properties can be overridden on the instance:
 
 ```qml
 Launcher {
@@ -135,5 +135,5 @@ Launcher {
 }
 ```
 
-Para alterar os diretórios pesquisados, ajuste a propriedade `dirs` do
-`DesktopDirScanner` (dentro de `AppLoader.qml`).
+To change the searched directories, adjust the `dirs` property of the
+`DesktopDirScanner` (inside `AppLoader.qml`).
