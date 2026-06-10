@@ -31,15 +31,30 @@ written entirely in QML — no external dependencies. It is already wired into
 
 Detailed module documentation lives in [`launcher/README.md`](launcher/README.md).
 
+## Native lockscreen
+
+The shell also bundles a native **lockscreen** module (folder `lockscreen/`, adapted
+from [quickshell-examples](https://github.com/quickshell-mirror/quickshell-examples)),
+written entirely in QML and themed to match the rest of the shell (Tokyo Night). It
+uses a real `WlSessionLock` and validates the password through **PAM**, so the screen
+stays genuinely locked until a valid password is typed.
+
+- Lock it from the **session menu** (the "Lock" entry), **or**
+- Trigger it from a Hyprland keybind via IPC (see below, suggested `SUPER + L`).
+
+Detailed module documentation lives in [`lockscreen/README.md`](lockscreen/README.md).
+
 ## Controlling the shell via IPC (recommended)
 
-`shell.qml` exposes two Quickshell `IpcHandler` targets so the launcher and the
-session menu can be triggered from anywhere while the shell is running:
+`shell.qml` exposes three Quickshell `IpcHandler` targets so the launcher, the
+session menu and the lockscreen can be triggered from anywhere while the shell is
+running:
 
-| Target     | Functions               | What it does                              |
-|------------|-------------------------|-------------------------------------------|
-| `launcher` | `toggle`, `open`, `close` | Show/hide the application launcher        |
-| `session`  | `toggle`, `open`, `close` | Show/hide the session menu (lock/suspend/reboot/shutdown/logout) |
+| Target       | Functions                 | What it does                              |
+|--------------|---------------------------|-------------------------------------------|
+| `launcher`   | `toggle`, `open`, `close` | Show/hide the application launcher        |
+| `session`    | `toggle`, `open`, `close` | Show/hide the session menu (lock/suspend/reboot/shutdown/logout) |
+| `lockscreen` | `lock`, `unlock`, `toggle` | Lock the screen (PAM) / unlock / alternate |
 
 Call them from the command line:
 
@@ -51,6 +66,10 @@ qs ipc call launcher close      # close the launcher
 qs ipc call session toggle      # toggle the session menu
 qs ipc call session open        # open the session menu
 qs ipc call session close       # close the session menu
+
+qs ipc call lockscreen lock     # lock the screen (asks for password via PAM)
+qs ipc call lockscreen unlock   # unlock without a password
+qs ipc call lockscreen toggle   # alternate locked/unlocked
 
 qs ipc show                     # list every target/function exposed
 ```
@@ -64,6 +83,7 @@ fragile. Add to your `hyprland.conf`:
 ```ini
 bind = SUPER, D, exec, qs ipc call launcher toggle      # application launcher
 bind = SUPER SHIFT, E, exec, qs ipc call session toggle # session menu
+bind = SUPER, L, exec, qs ipc call lockscreen lock      # lock the screen
 ```
 
 Reload Hyprland (`hyprctl reload`) and press the keybind.
@@ -74,12 +94,13 @@ Reload Hyprland (`hyprctl reload`) and press the keybind.
 
 ### Global shortcuts (fallback)
 
-`shell.qml` also keeps two Quickshell `GlobalShortcut`s (`launcher` and
-`session`) as a fallback. To use them instead of IPC:
+`shell.qml` also keeps three Quickshell `GlobalShortcut`s (`launcher`, `session` and
+`lock`) as a fallback. To use them instead of IPC:
 
 ```ini
 bind = SUPER, D, global, quickshell:launcher      # application launcher
 bind = SUPER SHIFT, E, global, quickshell:session # session menu
+bind = SUPER, L, global, quickshell:lock          # lock the screen
 ```
 
 The format is `<appid>:<name>` (default `appid` is `quickshell`). See
@@ -94,3 +115,11 @@ The format is `<appid>:<name>` (default `appid` is `quickshell`). See
 | `Tab`              | Next item                       |
 | `Enter`            | Launch the selected application |
 | `Esc` / click out  | Close the launcher              |
+
+### Lockscreen keybindings
+
+| Key        | Action                                   |
+|------------|------------------------------------------|
+| Type       | Enter your password                      |
+| `Enter`    | Submit and try to unlock (via PAM)       |
+| Click `Unlock` | Submit and try to unlock             |

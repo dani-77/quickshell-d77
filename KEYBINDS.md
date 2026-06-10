@@ -1,9 +1,9 @@
 # Keybinds (Hyprland) — quickshell-d77
 
-This document explains how to trigger the **launcher** and the **session menu** of
-quickshell-d77 from Hyprland keybinds (tested with **Hyprland 0.46+**), both in the
-native format (`hyprland.conf` / hyprlang) and in configurations generated/written
-via **Lua**.
+This document explains how to trigger the **launcher**, the **session menu** and the
+**lockscreen** of quickshell-d77 from Hyprland keybinds (tested with **Hyprland
+0.46+**), both in the native format (`hyprland.conf` / hyprlang) and in
+configurations generated/written via **Lua**.
 
 There are **two** ways to do this:
 
@@ -18,8 +18,10 @@ There are **two** ways to do this:
 |---------------------------------------|------------------------------|---------------------|
 | Toggle the application launcher       | `launcher` → `toggle`        | `SUPER + D`         |
 | Toggle the session menu               | `session`  → `toggle`        | `SUPER + SHIFT + E` |
+| Lock the screen                       | `lockscreen` → `lock`        | `SUPER + L`         |
 
-Each target exposes three functions: `toggle`, `open`, and `close`.
+The `launcher` and `session` targets each expose three functions: `toggle`, `open`,
+and `close`. The `lockscreen` target exposes `lock`, `unlock`, and `toggle`.
 
 ---
 
@@ -45,7 +47,20 @@ IpcHandler {
     function open():   void { g.sessionOpen = true }
     function close():  void { g.sessionOpen = false }
 }
+
+IpcHandler {
+    target: "lockscreen"
+    function lock():   void { lockScreen.lock() }    // lock (asks for password via PAM)
+    function unlock(): void { lockScreen.unlock() }  // unlock without a password
+    function toggle(): void { lockScreen.toggle() }  // alternate
+}
 ```
+
+> 🔒 The `lockscreen` target is backed by the native **lockscreen** module (folder
+> `lockscreen/`, based on quickshell-examples). `lock` uses a real `WlSessionLock`
+> and validates the password through **PAM**, so the screen stays locked until a
+> valid password is typed (or `unlock` is called from an already-authenticated
+> mechanism). See `lockscreen/README.md` for details.
 
 While Quickshell is running, any process can invoke these functions from the
 command line:
@@ -58,6 +73,10 @@ qs ipc call launcher close      # close the launcher
 qs ipc call session toggle      # toggle the session menu
 qs ipc call session open        # open the session menu
 qs ipc call session close       # close the session menu
+
+qs ipc call lockscreen lock     # lock the screen (asks for password via PAM)
+qs ipc call lockscreen unlock   # unlock without a password
+qs ipc call lockscreen toggle   # alternate locked/unlocked
 ```
 
 > 💡 If you run Quickshell with more than one instance/config, you can target the
@@ -81,6 +100,9 @@ bind = SUPER, D, exec, qs ipc call launcher toggle
 
 # Session menu: lock / suspend / reboot / shutdown / logout (SUPER + SHIFT + E)
 bind = SUPER SHIFT, E, exec, qs ipc call session toggle
+
+# Lock the screen (SUPER + L)
+bind = SUPER, L, exec, qs ipc call lockscreen lock
 ```
 
 General format:
@@ -110,6 +132,7 @@ local binds = {
   -- { mods,         key, "qs ipc call <target> <function>" }
   { "SUPER",       "D", "qs ipc call launcher toggle" },
   { "SUPER SHIFT", "E", "qs ipc call session toggle"  },
+  { "SUPER",       "L", "qs ipc call lockscreen lock" },
 }
 
 local lines = {}
@@ -130,6 +153,7 @@ Result written to `hyprland.conf`:
 ```ini
 bind = SUPER, D, exec, qs ipc call launcher toggle
 bind = SUPER SHIFT, E, exec, qs ipc call session toggle
+bind = SUPER, L, exec, qs ipc call lockscreen lock
 ```
 
 #### 3b. `init.lua` (Lua dotfiles frameworks)
@@ -145,6 +169,7 @@ local hypr = require("hypr")   -- depends on your framework
 hypr.bind({
   { mods = "SUPER",       key = "D", dispatcher = "exec", arg = "qs ipc call launcher toggle" },
   { mods = "SUPER SHIFT", key = "E", dispatcher = "exec", arg = "qs ipc call session toggle"  },
+  { mods = "SUPER",       key = "L", dispatcher = "exec", arg = "qs ipc call lockscreen lock" },
 })
 ```
 
@@ -158,6 +183,7 @@ at runtime, see 3c.
 local cmds = {
   'hyprctl keyword bind "SUPER, D, exec, qs ipc call launcher toggle"',
   'hyprctl keyword bind "SUPER SHIFT, E, exec, qs ipc call session toggle"',
+  'hyprctl keyword bind "SUPER, L, exec, qs ipc call lockscreen lock"',
 }
 for _, c in ipairs(cmds) do
   os.execute(c)
@@ -202,7 +228,11 @@ dispatcher** and the `<appid>:<name>` argument:
 # ── quickshell-d77 (via global shortcuts) ─────────────────
 bind = SUPER, D, global, quickshell:launcher
 bind = SUPER SHIFT, E, global, quickshell:session
+bind = SUPER, L, global, quickshell:lock
 ```
+
+`shell.qml` also registers a `quickshell:lock` shortcut that locks the screen via the
+native lockscreen module (`onPressed: lockScreen.lock()`).
 
 General format:
 
@@ -230,9 +260,10 @@ pgrep -af quickshell
 ### Step 2 (IPC) — List and test the exposed targets
 
 ```bash
-qs ipc show                       # should list the "launcher" and "session" targets
+qs ipc show                       # should list the "launcher", "session" and "lockscreen" targets
 qs ipc call launcher toggle       # the launcher should toggle
 qs ipc call session toggle        # the session menu should toggle
+qs ipc call lockscreen lock       # the screen should lock (type your password to unlock)
 ```
 
 ### Step 2 (global shortcuts) — List the registered shortcuts
@@ -246,6 +277,7 @@ You should see something like:
 ```
 quickshell:launcher -> Toggle the application launcher
 quickshell:session -> Toggle the session menu (lock/suspend/reboot/...)
+quickshell:lock -> Lock the screen (native lockscreen)
 ```
 
 ### Step 3 — Confirm the binds in Hyprland
@@ -258,6 +290,7 @@ hyprctl binds | grep -A4 -E "qs ipc call|global"
 
 - Press `SUPER + D` → the launcher should toggle.
 - Press `SUPER + SHIFT + E` → the session menu should toggle.
+- Press `SUPER + L` → the screen should lock (type your password to unlock).
 
 ---
 
@@ -288,7 +321,8 @@ hyprctl version
    ```ini
    bind = SUPER, D, exec, qs ipc call launcher toggle
    bind = SUPER SHIFT, E, exec, qs ipc call session toggle
+   bind = SUPER, L, exec, qs ipc call lockscreen lock
    ```
 3. `hyprctl reload`
 4. Verify: `qs ipc show`
-5. Test `SUPER+D` and `SUPER+SHIFT+E`.
+5. Test `SUPER+D`, `SUPER+SHIFT+E` and `SUPER+L`.
