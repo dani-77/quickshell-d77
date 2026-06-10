@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════
 // DesktopDirScanner.qml
-// Varre os diretórios padrão de aplicativos e devolve o
-// conteúdo concatenado de todos os arquivos .desktop.
+// Sweep the default directories and return the contents
+// of these directories, concatenating all the .desktop fles.
 // ══════════════════════════════════════════════════════
 import QtQuick
 import Quickshell
@@ -10,22 +10,22 @@ import Quickshell.Io
 Item {
     id: scanner
 
-    // ── Sinal emitido quando a varredura termina ──────────
+    // ── Signal emitted when the scan ends ──────────
     // raw: texto bruto com todos os .desktop concatenados,
     //      separados pelo delimitador ===DESKTOP_FILE_START===
     signal scanned(string raw)
 
-    // ── Diretórios pesquisados (ordem de prioridade) ──────
+    // ── Directories searched (in order of priority) ──────
     property var dirs: [
         Quickshell.env("HOME") + "/.local/share/applications",
         "/usr/local/share/applications",
         "/usr/share/applications"
     ]
 
-    // Indica se uma varredura está em andamento
+    // Indicates whether a scan is in progress.
     readonly property bool scanning: proc.running
 
-    // ── Dispara a varredura ───────────────────────────────
+    // ── Trigger the scan ───────────────────────────────
     function scan() {
         if (proc.running)
             return
@@ -33,9 +33,9 @@ Item {
         proc.running = true
     }
 
-    // ── Monta o comando shell de varredura ────────────────
-    // Para cada diretório existente, percorre os *.desktop e
-    // imprime um delimitador seguido do conteúdo do arquivo.
+    // ── Assembles the scan command ────────────────
+    // For each existing directorie, browse *.desktop and
+    // prints a delimiter followed by the file content.
     function buildCommand() {
         var quoted = []
         for (var i = 0; i < dirs.length; i++)
@@ -50,7 +50,7 @@ Item {
                "done; done"
     }
 
-    // ── Processo que executa a varredura ──────────────────
+    // ── Scan process ──────────────────
     Process {
         id: proc
         running: false

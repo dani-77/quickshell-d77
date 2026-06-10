@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════
 // Launcher.qml
-// Launcher estilo Rofi/Fuzzel, nativo em Quickshell/QML.
-// Janela flutuante centralizada com campo de busca e lista
-// de aplicativos navegável por teclado.
+// Quickshell native Rofi style Launcher.
+// Floating window centered with search field and
+// apps list scrollable with keyboard.
 // ══════════════════════════════════════════════════════
 import QtQuick
 import QtQuick.Layouts
@@ -14,7 +14,7 @@ PanelWindow {
     id: launcher
 
     // ══════════════════════════════════════════════════════
-    // TEMA (mesma paleta Tokyo Night do shell.qml)
+    // THEME (Tokyo Night)
     // ══════════════════════════════════════════════════════
     property color colBg:     "#1a1b26"
     property color colFg:     "#a9b1d6"
@@ -25,22 +25,21 @@ PanelWindow {
     property string font:     "JetBrainsMono Nerd Font"
     property int    fsize:    13
 
-    // Terminal usado para apps com Terminal=true
+    // Terminal for apps with Terminal=true
     property string terminal: "foot"
 
     // ══════════════════════════════════════════════════════
-    // ESTADO
+    // STATE
     // ══════════════════════════════════════════════════════
     property string query: ""
-    // Referencia appLoader.apps explicitamente para que o binding
-    // recompute tanto na mudança da busca quanto ao recarregar a lista.
+    // appLoader.apps reference
     property var    results: {
         appLoader.apps
         return appLoader.filter(query)
     }
     property int    selected: 0
 
-    // ── API pública ───────────────────────────────────────
+    // ── Public API ───────────────────────────────────────
     function open() {
         searchField.text = ""
         query    = ""
@@ -52,7 +51,7 @@ PanelWindow {
     function hide() {
         visible = false
     }
-    // Alias público com nome alinhado à API de IPC (toggle/open/close).
+    // Alias for IPC API (toggle/open/close).
     function close() {
         hide()
     }
@@ -61,7 +60,7 @@ PanelWindow {
         else         open()
     }
 
-    // ── Move a seleção mantendo-a dentro dos limites ──────
+    // ── Moves selection keeping inside parameters ──────
     function moveSelection(delta) {
         if (results.length === 0) {
             selected = 0
@@ -72,7 +71,7 @@ PanelWindow {
         selected = n
     }
 
-    // ── Executa o app selecionado ─────────────────────────
+    // ── Executes selected app ─────────────────────────
     function launchSelected() {
         if (results.length === 0)
             return
@@ -87,17 +86,15 @@ PanelWindow {
         if (app.terminal)
             cmd = launcher.terminal + " -e " + cmd
 
-        // setsid + & para desacoplar o processo do shell
         launchProc.command = ["sh", "-c", "setsid " + cmd + " >/dev/null 2>&1 &"]
         launchProc.running = true
         hide()
     }
 
-    // Reposiciona a seleção sempre que os resultados mudam
     onResultsChanged: selected = 0
 
     // ══════════════════════════════════════════════════════
-    // JANELA / LAYER SHELL
+    // LAYER SHELL WINDOW
     // ══════════════════════════════════════════════════════
     visible: false
     color: "transparent"
@@ -109,10 +106,8 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     WlrLayershell.namespace:     "quickshell-launcher"
 
-    // Processo genérico para abrir os aplicativos
     Process { id: launchProc; running: false }
 
-    // ── Fundo escurecido / clique fora fecha ──────────────
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.35)
@@ -123,7 +118,7 @@ PanelWindow {
     }
 
     // ══════════════════════════════════════════════════════
-    // CAIXA DO LAUNCHER
+    // LAUNCHER BOX
     // ══════════════════════════════════════════════════════
     Rectangle {
         id: box
@@ -135,7 +130,6 @@ PanelWindow {
         border.color: launcher.colPurple
         border.width: 2
 
-        // Impede que o clique dentro da caixa feche o launcher
         MouseArea { anchors.fill: parent }
 
         ColumnLayout {
@@ -143,7 +137,7 @@ PanelWindow {
             anchors.margins: 14
             spacing: 10
 
-            // ── Campo de busca ────────────────────────────
+            // ── Search field ────────────────────────────
             Rectangle {
                 Layout.fillWidth: true
                 height: 44
@@ -178,7 +172,7 @@ PanelWindow {
 
                         onTextChanged: launcher.query = text
 
-                        // ── Navegação por teclado ─────────
+                        // ── Keyboard navigation ─────────
                         Keys.onEscapePressed:    launcher.hide()
                         Keys.onUpPressed:        launcher.moveSelection(-1)
                         Keys.onDownPressed:      launcher.moveSelection(1)
@@ -191,7 +185,7 @@ PanelWindow {
                             }
                         }
 
-                        // Placeholder (filho do próprio campo)
+                        // Placeholder
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.left: parent.left
@@ -204,7 +198,7 @@ PanelWindow {
                 }
             }
 
-            // ── Lista de resultados ───────────────────────
+            // ── Result list ───────────────────────
             ListView {
                 id: list
                 Layout.fillWidth:  true
@@ -215,7 +209,6 @@ PanelWindow {
                 spacing: 2
                 boundsBehavior: Flickable.StopAtBounds
 
-                // Mantém o item selecionado sempre visível
                 onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
                 delegate: Rectangle {
@@ -236,7 +229,6 @@ PanelWindow {
                         anchors.rightMargin: 12
                         spacing: 12
 
-                        // Indicador da seleção
                         Rectangle {
                             width: 3
                             height: 26
@@ -278,7 +270,7 @@ PanelWindow {
                     }
                 }
 
-                // Mensagem de lista vazia
+                // Empty list message
                 Text {
                     anchors.centerIn: parent
                     visible: launcher.results.length === 0
@@ -290,7 +282,6 @@ PanelWindow {
                 }
             }
 
-            // ── Rodapé com contagem ───────────────────────
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignRight
@@ -303,7 +294,7 @@ PanelWindow {
     }
 
     // ══════════════════════════════════════════════════════
-    // FONTE DE DADOS
+    // DATA SOURCE
     // ══════════════════════════════════════════════════════
     AppLoader {
         id: appLoader

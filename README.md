@@ -18,8 +18,6 @@ git clone https://github.com/dani-77/quickshell-d77.git ~/.config/quickshell
 qs -p ~/.config/quickshell/shell.qml
 ```
 
-Enjoy
-
 ## Native application launcher
 
 The shell ships with a built-in application launcher (Rofi/Fuzzel style),
@@ -123,3 +121,5 @@ The format is `<appid>:<name>` (default `appid` is `quickshell`). See
 | Type       | Enter your password                      |
 | `Enter`    | Submit and try to unlock (via PAM)       |
 | Click `Unlock` | Submit and try to unlock             |
+
+Enjoy

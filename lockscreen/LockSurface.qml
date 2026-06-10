@@ -1,12 +1,12 @@
 // ══════════════════════════════════════════════════════
 // LockSurface.qml
-// UI do lockscreen (uma instância por monitor). Mostra o
-// relógio, a data e o campo de password. A lógica de
-// autenticação vive no LockContext partilhado.
+// Lockscreen UI (one instance per monitor). Displays
+// the clock, date, and password field. The authentication
+// logic resides in the shared LockContext.
 //
-// Estilo alinhado à paleta Tokyo Night do resto do projeto
-// (mesma abordagem do launcher: Rectangle + TextInput, sem
-// depender de QtQuick.Controls).
+// The style aligns with the Tokyo Night color palette of the rest
+//  of the project. (Same approach as the launcher: Rectangle + TextInput,
+//  without depending on QtQuick.Controls).
 // ══════════════════════════════════════════════════════
 import QtQuick
 import QtQuick.Layouts
@@ -15,11 +15,10 @@ import Quickshell.Wayland
 Rectangle {
     id: root
 
-    // Contexto partilhado (estado + PAM). Obrigatório.
     required property LockContext context
 
     // ══════════════════════════════════════════════════════
-    // TEMA (mesma paleta Tokyo Night do shell.qml/launcher)
+    // THEME (Tokyo Night)
     // ══════════════════════════════════════════════════════
     property color colBg:     "#1a1b26"
     property color colFg:     "#a9b1d6"
@@ -32,10 +31,10 @@ Rectangle {
 
     color: colBg
 
-    // Foca o campo de password assim que a surface aparece.
+    // Focus on the password field as soon as the surface appears.
     Component.onCompleted: passwordBox.forceActiveFocus()
 
-    // ── Relógio ───────────────────────────────────────────
+    // ── Clock ───────────────────────────────────────────
     Text {
         id: clock
         property var date: new Date()
@@ -66,7 +65,7 @@ Rectangle {
         }
     }
 
-    // ── Data ──────────────────────────────────────────────
+    // ── Date ──────────────────────────────────────────────
     Text {
         anchors {
             horizontalCenter: parent.horizontalCenter
@@ -79,7 +78,7 @@ Rectangle {
         text: Qt.formatDateTime(clock.date, "dddd, dd MMMM yyyy")
     }
 
-    // ── Caixa de autenticação ─────────────────────────────
+    // ── Authentication box ─────────────────────────────
     ColumnLayout {
         anchors {
             horizontalCenter: parent.horizontalCenter
@@ -92,7 +91,6 @@ Rectangle {
             spacing: 10
             Layout.alignment: Qt.AlignHCenter
 
-            // Campo de password estilizado
             Rectangle {
                 Layout.preferredWidth: 360
                 implicitHeight: 48
@@ -107,7 +105,6 @@ Rectangle {
                     anchors.rightMargin: 14
                     spacing: 10
 
-                    // Ícone de cadeado
                     Text {
                         text: "󰌾"
                         font.family: root.font
@@ -131,12 +128,9 @@ Rectangle {
                         selectByMouse: true
                         verticalAlignment: TextInput.AlignVCenter
 
-                        // Atualiza o texto no contexto quando o campo muda.
                         onTextChanged: root.context.currentText = text
-                        // Tenta desbloquear ao pressionar Enter.
                         onAccepted: root.context.tryUnlock()
 
-                        // Mantém o texto sincronizado entre monitores.
                         Connections {
                             target: root.context
                             function onCurrentTextChanged() {
@@ -158,7 +152,6 @@ Rectangle {
                 }
             }
 
-            // Botão de desbloqueio
             Rectangle {
                 implicitWidth: 110
                 implicitHeight: 48
@@ -181,7 +174,6 @@ Rectangle {
                     id: unlockMa
                     anchors.fill: parent
                     hoverEnabled: true
-                    // Não rouba o foco da caixa de texto.
                     acceptedButtons: Qt.LeftButton
                     onClicked: {
                         if (parent.enabled) root.context.tryUnlock()
@@ -190,7 +182,6 @@ Rectangle {
             }
         }
 
-        // Mensagem de password incorreta
         Text {
             Layout.alignment: Qt.AlignHCenter
             visible: root.context.showFailure

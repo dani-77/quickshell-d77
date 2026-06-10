@@ -5,22 +5,22 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 
-// Módulo do launcher nativo (pasta launcher/ ao lado deste shell.qml).
-// Expõe o componente Launcher — ver launcher/README.md para detalhes.
+// Laucher native module (launcher dir).
+// Expose Launcher
 import "launcher"
 
-// Módulo do lockscreen nativo (pasta lockscreen/ ao lado deste shell.qml).
-// Expõe o componente Lockscreen — ver lockscreen/README.md para detalhes.
+// Lockscreen native module (lockscreen dir).
+// Expose Lockscreen
 import "lockscreen"
 
 ShellRoot {
 
     // ══════════════════════════════════════════════════════
-    // LAUNCHER DE APLICATIVOS
+    // LAUNCHER
     // ══════════════════════════════════════════════════════
-    // Instância única do launcher nativo. Começa invisível e é
-    // mostrado/escondido via appLauncher.toggle(). Reaproveita a
-    // mesma paleta Tokyo Night e a fonte definidas em "g".
+    // Native launcher instance. Starts invisíble and it is
+    // shown/hidden with appLauncher.toggle(). 
+    // Uses Tokyo Night palette and font definided in "g".
     Launcher {
         id: appLauncher
         colBg:     g.colBg
@@ -31,16 +31,16 @@ ShellRoot {
         colPurple: g.colPurple
         font:      g.font
         fsize:     g.fsize
-        // Terminal usado para apps com Terminal=true (ajuste se necessário).
+        // Terminal used for apps with Terminal=true (adjust).
         terminal:  "foot"
     }
 
     // ══════════════════════════════════════════════════════
     // LOCKSCREEN
     // ══════════════════════════════════════════════════════
-    // Instância única do lockscreen nativo. Começa desbloqueado e é
-    // acionado via lockScreen.lock(). Reaproveita a mesma paleta
-    // Tokyo Night e a fonte definidas em "g".
+    // Native lockscreen instance. Starts umblocked and it is
+    // triggered with lockScreen.lock().
+    // Uses Tokyo Night palette and font definided in "g".
     Lockscreen {
         id: lockScreen
         colBg:     g.colBg
@@ -54,83 +54,82 @@ ShellRoot {
     }
 
     // ══════════════════════════════════════════════════════
-    // IPC (forma recomendada de acionar o launcher/sessão)
+    // IPC (Recommended way to activate the launcher/session)
     // ══════════════════════════════════════════════════════
-    // Expõe métodos chamáveis externamente via:
+    // Expose externally callable methods via:
     //   qs ipc call launcher toggle
     //   qs ipc call launcher open
     //   qs ipc call launcher close
     //   qs ipc call session  toggle | open | close
     //
-    // É a forma mais fiável de ligar keybinds do Hyprland (em especial
-    // com configs geradas em Lua, onde o dispatcher "global" costuma ser
-    // frágil). No Hyprland basta um simples exec, p.ex.:
+    // It is the most reliable method to link Hyprland keybinds.
+    // Within Hyprland just call it by exec ex.:
     //   bind = SUPER, D, exec, qs ipc call launcher toggle
-    // Ver KEYBINDS.md para a configuração completa (incl. Lua).
+    // KEYBINDS.md has a more extensive explanation (incl. Lua).
     IpcHandler {
         target: "launcher"
 
-        // Alterna a visibilidade do launcher (abre se fechado, fecha se aberto).
+        // Toggles the launcher's visibility. (open if closed, close if open).
         function toggle(): void { appLauncher.toggle() }
-        // Abre o launcher (e foca o campo de busca).
+        // Open the launcher (and focus search field).
         function open(): void { appLauncher.open() }
-        // Fecha o launcher.
+        // Close the launcher.
         function close(): void { appLauncher.close() }
     }
 
     IpcHandler {
         target: "session"
 
-        // Alterna a visibilidade do menu de sessão.
+        // Toggles session menu visibility.
         function toggle(): void { g.sessionOpen = !g.sessionOpen }
-        // Abre o menu de sessão.
+        // Open session menu.
         function open(): void { g.sessionOpen = true }
-        // Fecha o menu de sessão.
+        // Close session menu.
         function close(): void { g.sessionOpen = false }
     }
 
-    // IPC do lockscreen. Acionável via:
-    //   qs ipc call lockscreen lock     (bloqueia; pede password via PAM)
-    //   qs ipc call lockscreen unlock   (desbloqueia sem password)
-    //   qs ipc call lockscreen toggle   (alterna)
-    // Keybind sugerido no Hyprland:
+    // Lockscreen IPC. 
+    //   qs ipc call lockscreen lock     (block and ask for password via PAM)
+    //   qs ipc call lockscreen unlock   (unblock without password)
+    //   qs ipc call lockscreen toggle   (alternate)
+    // Suggested Hyprland Keybind:
     //   bind = SUPER, L, exec, qs ipc call lockscreen lock
     IpcHandler {
         target: "lockscreen"
 
-        // Bloqueia o ecrã (trancado até validar a password via PAM).
+        // Block the screen (blocked until the valid password is typed via PAM).
         function lock(): void { lockScreen.lock() }
-        // Desbloqueia o ecrã imediatamente, sem pedir password.
+        // Umblock the screen without password.
         function unlock(): void { lockScreen.unlock() }
-        // Alterna entre bloqueado/desbloqueado.
+        // Alternate between blocked/unblocked.
         function toggle(): void { lockScreen.toggle() }
     }
 
-    // ── Atalhos globais do Hyprland (fallback) ────────────
-    // Mantidos como alternativa ao IPC. Permitem acionar o launcher e o
-    // menu de sessão via o dispatcher "global". O prefixo é o appid
-    // (default "quickshell"), por isso os binds ficam:
+    // ── Global Hyprland Keybinds (fallback) ────────────
+    // As an alternative to IPC. Allow you to launch the launcher and
+    // session menu via "global" dispatcher "global". The prefix is the appid
+    // (default "quickshell"), that way the binds look like this:
     //   bind = SUPER, D,       global, quickshell:launcher
     //   bind = SUPER SHIFT, E, global, quickshell:session
-    // Recomenda-se preferir o IPC (acima); ver KEYBINDS.md.
+    // It is recommended to use IPC; see KEYBINDS.md.
     GlobalShortcut {
         appid: "quickshell"
         name: "launcher"
-        description: "Abre/fecha o launcher de aplicativos"
+        description: "open/close app launcher"
         onPressed: appLauncher.toggle()
     }
 
     GlobalShortcut {
         appid: "quickshell"
         name: "session"
-        description: "Abre/fecha o menu de sessão (lock/suspend/reboot/...)"
+        description: "open/close session menu (lock/suspend/reboot/...)"
         onPressed: g.sessionOpen = !g.sessionOpen
     }
 
     GlobalShortcut {
         appid: "quickshell"
         name: "lock"
-        description: "Bloqueia o ecrã (lockscreen nativo)"
+        description: "Block the screen (native lockscreen)"
         onPressed: lockScreen.lock()
     }
 
@@ -234,7 +233,6 @@ ShellRoot {
     }
 
     // Session Process
-    // Nota: o antigo lockProc (hyprlock) foi substituído pelo módulo nativo "lockscreen".
     Process { id: suspendProc
                      command: ["loginctl", "suspend"]
                           running: false }
@@ -262,7 +260,7 @@ ShellRoot {
     }
 
     // ══════════════════════════════════════════════════════
-    // PRINCIPAL BAR
+    // BAR
     // ══════════════════════════════════════════════════════
     PanelWindow {
         id: bar
@@ -298,7 +296,6 @@ ShellRoot {
                     id: launchMa
                     anchors.fill: parent
                     hoverEnabled: true
-                    // Abre/fecha o launcher nativo (antes chamava o "fuzzel").
                     onClicked: appLauncher.toggle()
                 }
             }
@@ -482,8 +479,6 @@ ShellRoot {
         visible: g.sessionOpen
         color: "transparent"
 
-        // Cobre o ecrã inteiro para centralizar o menu e permitir
-        // fechar clicando em qualquer ponto fora da caixa (igual ao launcher).
         anchors.top:    true
         anchors.bottom: true
         anchors.left:   true
@@ -491,12 +486,8 @@ ShellRoot {
 
         WlrLayershell.layer:     WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-session"
-        // Pede foco de teclado exclusivo ao compositor enquanto o menu
-        // está aberto, permitindo a navegação por teclado (setas/Enter/Esc).
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-        // Ao abrir, repõe a seleção no topo e entrega o foco à caixa
-        // para que as teclas sejam recebidas de imediato.
         onVisibleChanged: {
             if (visible) {
                 sessionBox.currentIndex = 0
@@ -504,7 +495,6 @@ ShellRoot {
             }
         }
 
-        // Fundo escurecido / clique fora fecha
         Rectangle {
             anchors.fill: parent
             color: Qt.rgba(0, 0, 0, 0.35)
@@ -514,7 +504,7 @@ ShellRoot {
             }
         }
 
-        // ── Caixa central do menu de sessão ───────────────
+        // ── Central session menu box ───────────────
         Rectangle {
             id: sessionBox
             anchors.centerIn: parent
@@ -525,28 +515,18 @@ ShellRoot {
             border.color: g.colRed
             border.width: 2
 
-            // Índice da opção atualmente selecionada (0..4). Usado tanto
-            // pela navegação por teclado como para o destaque visual.
             property int currentIndex: 0
 
-            // Processos correspondentes a cada opção, pela mesma ordem
-            // em que aparecem no menu (Lock, Suspend, Reboot, Shutdown, Logout).
-            // O Lock (índice 0) usa o lockscreen nativo (lockScreen.lock()),
-            // por isso é null aqui e tratado à parte em activateSelected().
             readonly property var sessionActions: [
                 null, suspendProc, rebootProc, shutdownProc, logoutProc
             ]
 
-            // Executa a opção atualmente selecionada e fecha o menu.
             function activateSelected() {
                 g.sessionOpen = false
                 if (currentIndex === 0) lockScreen.lock()
                 else                    sessionActions[currentIndex].running = true
             }
 
-            // ── Navegação por teclado ─────────────────────────
-            // Recebe foco para captar as teclas (ver forceActiveFocus
-            // disparado no onVisibleChanged do PanelWindow).
             focus: true
             Keys.onUpPressed:     currentIndex = (currentIndex - 1 + sessionActions.length) % sessionActions.length
             Keys.onDownPressed:   currentIndex = (currentIndex + 1) % sessionActions.length
@@ -554,7 +534,6 @@ ShellRoot {
             Keys.onReturnPressed: activateSelected()
             Keys.onEnterPressed:  activateSelected()
 
-            // Impede que o clique dentro da caixa feche o menu
             MouseArea { anchors.fill: parent }
 
             ColumnLayout {

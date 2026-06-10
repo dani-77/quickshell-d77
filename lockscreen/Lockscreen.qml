@@ -1,16 +1,16 @@
 // ══════════════════════════════════════════════════════
 // Lockscreen.qml
-// Componente principal do módulo lockscreen. Encapsula o
-// WlSessionLock + o LockContext e expõe uma API pública
-// (lock/unlock/toggle) pronta a ser ligada ao IPC.
+// Main component of the lockscreen module. Encapsulates the
+// WlSessionLock + LockContext e expose a public API 
+// (lock/unlock/toggle) ready to be IPC connected.
 //
-// Uso no shell.qml:
+// Usage shell.qml:
 //   import "lockscreen"
 //   Lockscreen { id: lockScreen }
-//   lockScreen.lock()    // bloqueia o ecrã
-//   lockScreen.unlock()  // desbloqueia (sem password)
+//   lockScreen.lock()    // block the screen
+//   lockScreen.unlock()  // unblock (no password)
 //
-// Ver lockscreen/README.md para detalhes.
+// Check README.md for details.
 // ══════════════════════════════════════════════════════
 import QtQuick
 import Quickshell
@@ -20,7 +20,7 @@ Scope {
     id: root
 
     // ══════════════════════════════════════════════════════
-    // TEMA (repassado às surfaces — paleta Tokyo Night)
+    // THEME (Tokyo Night)
     // ══════════════════════════════════════════════════════
     property color colBg:     "#1a1b26"
     property color colFg:     "#a9b1d6"
@@ -31,20 +31,20 @@ Scope {
     property string font:     "JetBrainsMono Nerd Font"
     property int    fsize:    13
 
-    // ── Estado ────────────────────────────────────────────
-    // true enquanto o ecrã está bloqueado.
+    // ── State ────────────────────────────────────────────
+    // true while screen is locked.
     readonly property alias locked: lock.locked
 
-    // ── Sinais ────────────────────────────────────────────
-    // Emitidos quando o estado de bloqueio muda.
+    // ── Signals ────────────────────────────────────────────
+    // Emited when the lock state change.
     signal didLock()
     signal didUnlock()
 
     // ══════════════════════════════════════════════════════
-    // API pública (chamável via IPC)
+    // Public API (via IPC)
     // ══════════════════════════════════════════════════════
-    // Bloqueia o ecrã. A sessão fica trancada até a password
-    // ser validada via PAM (ou unlock() ser chamado).
+    // Lock the screen. Session locked until the password
+    // is validated via PAM (or unlock() if called).
     function lock() {
         if (lock.locked) return
         lockContext.currentText      = ""
@@ -54,10 +54,7 @@ Scope {
         root.didLock()
     }
 
-    // Desbloqueia o ecrã imediatamente, sem pedir password.
-    // Útil para automações/IPC a partir de mecanismos já
-    // autenticados. Para desbloqueio normal, o utilizador
-    // escreve a password no LockSurface.
+    // Unlock the screen, without password.
     function unlock() {
         if (!lock.locked) return
         lock.locked = false
@@ -67,34 +64,29 @@ Scope {
         root.didUnlock()
     }
 
-    // Alterna entre bloqueado/desbloqueado.
+    // Alternates between locked/unlocked.
     function toggle() {
         if (lock.locked) unlock()
         else             lock()
     }
 
     // ══════════════════════════════════════════════════════
-    // CONTEXTO PARTILHADO + AUTENTICAÇÃO
+    // SHARED CONTEXT + AUTHENTICATION
     // ══════════════════════════════════════════════════════
     LockContext {
         id: lockContext
 
-        // Quando o PAM valida a password, desbloqueia a sessão.
         onUnlocked: {
-            // É preciso libertar o lock antes de qualquer coisa, senão o
-            // compositor mostra um lock de fallback com que não dá para
-            // interagir.
             lock.locked = false
             root.didUnlock()
         }
     }
 
     // ══════════════════════════════════════════════════════
-    // SESSÃO BLOQUEADA (uma surface por monitor)
+    // LOCKED SESSION
     // ══════════════════════════════════════════════════════
     WlSessionLock {
         id: lock
-        // Começa desbloqueado; o shell aciona via lock().
         locked: false
 
         WlSessionLockSurface {
@@ -102,7 +94,7 @@ Scope {
                 anchors.fill: parent
                 context: lockContext
 
-                // Repassa o tema.
+                // THEME
                 colBg:     root.colBg
                 colFg:     root.colFg
                 colMuted:  root.colMuted

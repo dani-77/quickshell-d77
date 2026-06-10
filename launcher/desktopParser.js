@@ -1,17 +1,17 @@
 // ══════════════════════════════════════════════════════
 // desktopParser.js
-// Parser para arquivos .desktop (Desktop Entry Specification)
-// Usado pelo módulo launcher do quickshell-d77
+// Parser .desktop files (Desktop Entry Specification)
+// Used by launcher module of quickshell-d77
 // ══════════════════════════════════════════════════════
 .pragma library
 
-// Delimitador inserido pelo DesktopDirScanner entre cada arquivo
+// Inserted delimiter with DesktopDirScanner between each archive
 var FILE_DELIM = "===DESKTOP_FILE_START==="
 
 // ──────────────────────────────────────────────────────
-// Remove os "field codes" (%f %u %U ...) do campo Exec.
-// O .desktop usa esses códigos para passar arquivos/URLs,
-// mas para um launcher simples eles devem ser ignorados.
+// Remove the "field codes" (%f %u %U ...) of Exec field.
+// .desktop uses those codes for archives/URLs, but for a
+// simple launcher those codes must be ignored.
 // ──────────────────────────────────────────────────────
 function cleanExec(exec) {
     if (!exec) return ""
@@ -22,16 +22,16 @@ function cleanExec(exec) {
 }
 
 // ──────────────────────────────────────────────────────
-// Converte "true"/"false" textual em booleano.
+// Converts textual "true"/"false" into boolean.
 // ──────────────────────────────────────────────────────
 function toBool(val) {
     return String(val).trim().toLowerCase() === "true"
 }
 
 // ──────────────────────────────────────────────────────
-// Faz o parse de UM bloco de texto correspondente a um
-// único arquivo .desktop. Retorna um objeto ou null.
-// Apenas a seção [Desktop Entry] é considerada.
+// Parse the corresponding text block of .desktop file into
+//  on single file. Returns an object or null.
+// [Desktop Entry] section is the only considered.
 // ──────────────────────────────────────────────────────
 function parseOne(content) {
     var lines = content.split("\n")
@@ -53,7 +53,7 @@ function parseOne(content) {
         if (line === "" || line.charAt(0) === "#")
             continue
 
-        // Cabeçalho de seção, ex: [Desktop Entry] ou [Desktop Action ...]
+        // Section header, ex: [Desktop Entry] or [Desktop Action ...]
         if (line.charAt(0) === "[") {
             inEntry = (line === "[Desktop Entry]")
             continue
@@ -68,8 +68,8 @@ function parseOne(content) {
         var key = line.substring(0, eq).trim()
         var val = line.substring(eq + 1).trim()
 
-        // Ignora chaves localizadas, ex: Name[pt_BR]=...
-        // Mantemos somente as chaves "puras".
+        // Ignore local keys, ex: Name[pt_BR]=...
+        // Only keep the "pure" keys.
         switch (key) {
             case "Name":       app.name       = val;              break
             case "Exec":       app.exec       = cleanExec(val);   break
@@ -87,9 +87,9 @@ function parseOne(content) {
 }
 
 // ──────────────────────────────────────────────────────
-// Faz o parse de toda a saída concatenada do scanner.
-// Retorna um array de aplicativos válidos, já ordenado
-// alfabeticamente pelo nome.
+// It parses all the concatenated output from the scanner.
+// Returns the array of valid applications already alphabetically
+// sorted by name.
 // ──────────────────────────────────────────────────────
 function parseEntries(raw) {
     if (!raw) return []
@@ -105,14 +105,14 @@ function parseEntries(raw) {
 
         var app = parseOne(block)
 
-        // Filtra entradas inválidas ou que não devem aparecer.
+        // Filter invalid entries.
         if (!app.isApp)        continue
         if (app.noDisplay)     continue
         if (app.hidden)        continue
         if (app.name === "")   continue
         if (app.exec === "")   continue
 
-        // Evita duplicatas (mesmo nome + exec).
+        // Avoid duplicates (same name + exec).
         var dedupKey = app.name + "\u0000" + app.exec
         if (seen[dedupKey]) continue
         seen[dedupKey] = true
@@ -130,8 +130,8 @@ function parseEntries(raw) {
 }
 
 // ──────────────────────────────────────────────────────
-// Filtra uma lista de apps por uma query (case-insensitive).
-// Casa no nome, comentário ou categorias.
+// Filters a list of apps based on query (case-insensitive).
+// Name, comment or category.
 // ──────────────────────────────────────────────────────
 function filterApps(apps, query) {
     if (!query || query.trim() === "")

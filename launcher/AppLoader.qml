@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════
 // AppLoader.qml
-// Junta o DesktopDirScanner com o desktopParser.js para
-// produzir uma lista de aplicativos pronta para uso.
+// Join DesktopDirScanner and desktopParser.js to
+// produce a list of ready to use applications.
 // ══════════════════════════════════════════════════════
 import QtQuick
 import Quickshell
@@ -10,31 +10,31 @@ import "desktopParser.js" as Parser
 Item {
     id: loader
 
-    // ── Lista completa de apps (array de objetos JS) ──────
-    // Cada item: { name, exec, icon, comment, categories,
+    // ── Complet list of apps (objects array JS) ──────
+    // Each item: { name, exec, icon, comment, categories,
     //              terminal, noDisplay, hidden, isApp }
     property var apps: []
 
-    // Quantidade de apps carregados
+    // Quantity of loaded apps
     readonly property int count: apps.length
 
-    // Indica se já houve ao menos um carregamento
+    // Indicates whether there has already been at least one run
     property bool ready: false
 
-    // ── Sinais ────────────────────────────────────────────
+    // ── Signals ────────────────────────────────────────────
     signal loaded()
 
-    // ── Recarrega a lista de aplicativos ──────────────────
+    // ── Reload apps list ──────────────────
     function reload() {
         scanner.scan()
     }
 
-    // ── Filtra os apps por uma query (delega ao parser) ───
+    // ── Filter apps by query (delegates to parser) ───
     function filter(query) {
         return Parser.filterApps(loader.apps, query)
     }
 
-    // ── Scanner que alimenta o parser ─────────────────────
+    // ── Scanner that feeds the parser ─────────────────────
     DesktopDirScanner {
         id: scanner
         onScanned: function (raw) {
@@ -44,6 +44,6 @@ Item {
         }
     }
 
-    // Carrega assim que o componente fica pronto
+    // Load as soon as the the component is ready
     Component.onCompleted: reload()
 }

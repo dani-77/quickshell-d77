@@ -1,50 +1,43 @@
-# Módulo `lockscreen`
+# `lockscreen` Module
 
-Lockscreen nativo em Quickshell/QML, baseado no exemplo oficial do
-[`quickshell-examples`](https://github.com/quickshell-mirror/quickshell-examples/tree/master/lockscreen),
-adaptado ao **quickshell-d77**: estrutura modular, paleta Tokyo Night e uma API
-pública (`lock`/`unlock`/`toggle`) pronta a ligar ao **IPC**.
+Native lockscreen for Quickshell/QML, based on the official
+[`quickshell-examples`](https://github.com/quickshell-mirror/quickshell-examples/tree/master/lockscreen)
+implementation, adapted for **quickshell-d77** with a modular structure, Tokyo Night color palette, and a public API (`lock`/`unlock`/`toggle`) ready to be connected to **IPC**.
 
-Autenticação por **password via PAM** (`pam_unix`). Usa o protocolo
-`ext-session-lock-v1` do Wayland (`WlSessionLock`), por isso bloqueia de forma
-segura — o compositor garante que nada fica acessível por baixo.
+Authentication is handled through **PAM password authentication** (`pam_unix`). It uses the Wayland `ext-session-lock-v1` protocol (`WlSessionLock`), providing secure screen locking—the compositor ensures that nothing remains accessible underneath.
 
 ![sample](../sample.png)
 
-## Conteúdo do módulo
+## Module Contents
 
-| Arquivo            | Responsabilidade |
-|--------------------|------------------|
-| `Lockscreen.qml`   | Componente principal: encapsula `WlSessionLock` + `LockContext` e expõe `lock()`, `unlock()`, `toggle()` e a propriedade `locked`. |
-| `LockContext.qml`  | Estado partilhado entre monitores + autenticação PAM (`PamContext`). |
-| `LockSurface.qml`  | UI de cada monitor: relógio, data e campo de password (estilo Tokyo Night). |
-| `pam/password.conf`| Config PAM dedicada (`auth required pam_unix.so`). |
-| `qmldir`           | Definição do módulo (expõe os componentes acima). |
+| File | Responsibility |
+|------|----------------|
+| `Lockscreen.qml` | Main component: wraps `WlSessionLock` + `LockContext` and exposes `lock()`, `unlock()`, `toggle()`, and the `locked` property. |
+| `LockContext.qml` | Shared state across monitors + PAM authentication (`PamContext`). |
+| `LockSurface.qml` | Per-monitor UI: clock, date, and password field (Tokyo Night style). |
+| `pam/password.conf` | Dedicated PAM configuration (`auth required pam_unix.so`). |
+| `qmldir` | Module definition (exports the components above). |
 
-## Como funciona
+## How It Works
 
+```text
+Lockscreen ──contains──▶ WlSessionLock ──per monitor──▶ LockSurface
+     │                    │
+     └──── LockContext (PAM) ◀────┘
 ```
-Lockscreen ──contém──▶ WlSessionLock ──por monitor──▶ LockSurface
-     │                                                     │
-     └──────────────── LockContext (PAM) ◀─────────────────┘
-```
 
-1. `Lockscreen.lock()` define `WlSessionLock.locked = true`. O compositor tranca
-   a sessão e mostra uma `LockSurface` em cada monitor.
-2. O utilizador escreve a password; ao pressionar Enter (ou no botão **Unlock**),
-   o `LockContext` valida-a através do PAM (`pam/password.conf`).
-3. Em caso de sucesso, o `LockContext` emite `unlocked()` e o `Lockscreen`
-   liberta o lock (`locked = false`). Em caso de falha, mostra "Incorrect password".
+1. `Lockscreen.lock()` sets `WlSessionLock.locked = true`. The compositor locks the session and displays a `LockSurface` on every monitor.
+2. The user enters their password; when pressing Enter (or clicking the **Unlock** button), `LockContext` validates it through PAM (`pam/password.conf`).
+3. On success, `LockContext` emits `unlocked()` and `Lockscreen` releases the lock (`locked = false`). On failure, it displays "Incorrect password".
 
-> ⚠️ A config PAM (`pam/password.conf`) é resolvida **relativamente** ao
-> `LockContext.qml`. Mantém a pasta `pam/` dentro de `lockscreen/`.
+> ⚠️ The PAM configuration (`pam/password.conf`) is resolved **relative** to `LockContext.qml`. Keep the `pam/` directory inside `lockscreen/`.
 
-## Instalação
+## Installation
 
-A pasta `lockscreen/` deve ficar **ao lado** do seu `shell.qml`
-(por padrão em `~/.config/quickshell/`):
+The `lockscreen/` directory should be placed **next to** your `shell.qml`
+(typically in `~/.config/quickshell/`):
 
-```
+```text
 ~/.config/quickshell/
 ├── shell.qml
 └── lockscreen/
@@ -56,10 +49,9 @@ A pasta `lockscreen/` deve ficar **ao lado** do seu `shell.qml`
         └── password.conf
 ```
 
-## Uso
+## Usage
 
-No seu `shell.qml`, importe o módulo pelo caminho relativo e instancie o
-`Lockscreen`:
+In your `shell.qml`, import the module using a relative path and instantiate `Lockscreen`:
 
 ```qml
 import "lockscreen"
@@ -67,46 +59,46 @@ import "lockscreen"
 ShellRoot {
     Lockscreen { id: lockScreen }
 
-    // Bloquear/desbloquear de qualquer lugar:
+    // Lock/unlock from anywhere:
     // lockScreen.lock()
     // lockScreen.unlock()
 }
 ```
 
-### Acionar via IPC (recomendado)
+### Trigger via IPC (Recommended)
 
-O `shell.qml` já expõe um `IpcHandler` com o target `lockscreen`:
+Your `shell.qml` already exposes an `IpcHandler` with the `lockscreen` target:
 
 ```bash
-qs ipc call lockscreen lock      # bloqueia o ecrã
-qs ipc call lockscreen unlock    # desbloqueia (sem password)
-qs ipc call lockscreen toggle    # alterna
+qs ipc call lockscreen lock      # lock the screen
+qs ipc call lockscreen unlock    # unlock (without password)
+qs ipc call lockscreen toggle    # toggle state
 ```
 
-E no `hyprland.conf`:
+And in `hyprland.conf`:
 
 ```ini
 bind = SUPER, L, exec, qs ipc call lockscreen lock
 ```
 
-Ver [`KEYBINDS.md`](../KEYBINDS.md) para a configuração completa (incl. Lua).
+See [`KEYBINDS.md`](../KEYBINDS.md) for the complete configuration (including Lua integration).
 
-## API pública do `Lockscreen`
+## `Lockscreen` Public API
 
-| Membro       | Tipo     | Descrição |
-|--------------|----------|-----------|
-| `lock()`     | função   | Bloqueia o ecrã (pede password via PAM para desbloquear). |
-| `unlock()`   | função   | Desbloqueia imediatamente, **sem** pedir password (p./ automações). |
-| `toggle()`   | função   | Alterna entre bloqueado/desbloqueado. |
-| `locked`     | `bool`   | (Read-only) `true` enquanto o ecrã está bloqueado. |
-| `didLock()`  | sinal    | Emitido quando o ecrã é bloqueado. |
-| `didUnlock()`| sinal    | Emitido quando o ecrã é desbloqueado. |
-| `colBg` … `colRed` | `color` | Cores do tema (padrão: paleta Tokyo Night). |
-| `font`, `fsize` | `string`/`int` | Fonte e tamanho base. |
+| Member | Type | Description |
+|---------|------|-------------|
+| `lock()` | function | Locks the screen (requires PAM password authentication to unlock). |
+| `unlock()` | function | Unlocks immediately, **without** requiring a password (e.g., for automation). |
+| `toggle()` | function | Toggles between locked and unlocked states. |
+| `locked` | `bool` | (Read-only) `true` while the screen is locked. |
+| `didLock()` | signal | Emitted when the screen is locked. |
+| `didUnlock()` | signal | Emitted when the screen is unlocked. |
+| `colBg` … `colRed` | `color` | Theme colors (default: Tokyo Night palette). |
+| `font`, `fsize` | `string` / `int` | Font family and base font size. |
 
-## Personalização
+## Customization
 
-Todas as propriedades de tema podem ser sobrescritas na instância:
+All theme properties can be overridden in the component instance:
 
 ```qml
 Lockscreen {
@@ -117,9 +109,8 @@ Lockscreen {
 }
 ```
 
-## Requisitos
+## Requirements
 
-- **Quickshell** com suporte a PAM (`Quickshell.Services.Pam`) e a Wayland
-  session lock (`Quickshell.Wayland.WlSessionLock`).
-- Um compositor Wayland que implemente `ext-session-lock-v1` (ex.: Hyprland).
-- PAM configurado no sistema (o `pam_unix` valida a password do utilizador).
+- **Quickshell** with PAM support (`Quickshell.Services.Pam`) and Wayland session lock support (`Quickshell.Wayland.WlSessionLock`).
+- A Wayland compositor that implements `ext-session-lock-v1` (e.g., Hyprland).
+- PAM configured on the system (`pam_unix` is used to validate the user's password).
