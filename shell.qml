@@ -9,6 +9,10 @@ import QtQuick.Layouts
 // Expõe o componente Launcher — ver launcher/README.md para detalhes.
 import "launcher"
 
+// Módulo do lockscreen nativo (pasta lockscreen/ ao lado deste shell.qml).
+// Expõe o componente Lockscreen — ver lockscreen/README.md para detalhes.
+import "lockscreen"
+
 ShellRoot {
 
     // ══════════════════════════════════════════════════════
@@ -29,6 +33,24 @@ ShellRoot {
         fsize:     g.fsize
         // Terminal usado para apps com Terminal=true (ajuste se necessário).
         terminal:  "foot"
+    }
+
+    // ══════════════════════════════════════════════════════
+    // LOCKSCREEN
+    // ══════════════════════════════════════════════════════
+    // Instância única do lockscreen nativo. Começa desbloqueado e é
+    // acionado via lockScreen.lock(). Reaproveita a mesma paleta
+    // Tokyo Night e a fonte definidas em "g".
+    Lockscreen {
+        id: lockScreen
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colBlue:   g.colBlue
+        colPurple: g.colPurple
+        colRed:    g.colRed
+        font:      g.font
+        fsize:     g.fsize
     }
 
     // ══════════════════════════════════════════════════════
@@ -67,6 +89,23 @@ ShellRoot {
         function close(): void { g.sessionOpen = false }
     }
 
+    // IPC do lockscreen. Acionável via:
+    //   qs ipc call lockscreen lock     (bloqueia; pede password via PAM)
+    //   qs ipc call lockscreen unlock   (desbloqueia sem password)
+    //   qs ipc call lockscreen toggle   (alterna)
+    // Keybind sugerido no Hyprland:
+    //   bind = SUPER, L, exec, qs ipc call lockscreen lock
+    IpcHandler {
+        target: "lockscreen"
+
+        // Bloqueia o ecrã (trancado até validar a password via PAM).
+        function lock(): void { lockScreen.lock() }
+        // Desbloqueia o ecrã imediatamente, sem pedir password.
+        function unlock(): void { lockScreen.unlock() }
+        // Alterna entre bloqueado/desbloqueado.
+        function toggle(): void { lockScreen.toggle() }
+    }
+
     // ── Atalhos globais do Hyprland (fallback) ────────────
     // Mantidos como alternativa ao IPC. Permitem acionar o launcher e o
     // menu de sessão via o dispatcher "global". O prefixo é o appid
@@ -86,6 +125,13 @@ ShellRoot {
         name: "session"
         description: "Abre/fecha o menu de sessão (lock/suspend/reboot/...)"
         onPressed: g.sessionOpen = !g.sessionOpen
+    }
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "lock"
+        description: "Bloqueia o ecrã (lockscreen nativo)"
+        onPressed: lockScreen.lock()
     }
 
     // ══════════════════════════════════════════════════════
@@ -188,9 +234,7 @@ ShellRoot {
     }
 
     // Session Process
-    Process { id: lockProc
-                        command: ["hyprlock"]
-                      running: false }
+    // Nota: o antigo lockProc (hyprlock) foi substituído pelo módulo nativo "lockscreen".
     Process { id: suspendProc
                      command: ["loginctl", "suspend"]
                           running: false }
@@ -487,14 +531,17 @@ ShellRoot {
 
             // Processos correspondentes a cada opção, pela mesma ordem
             // em que aparecem no menu (Lock, Suspend, Reboot, Shutdown, Logout).
+            // O Lock (índice 0) usa o lockscreen nativo (lockScreen.lock()),
+            // por isso é null aqui e tratado à parte em activateSelected().
             readonly property var sessionActions: [
-                lockProc, suspendProc, rebootProc, shutdownProc, logoutProc
+                null, suspendProc, rebootProc, shutdownProc, logoutProc
             ]
 
             // Executa a opção atualmente selecionada e fecha o menu.
             function activateSelected() {
                 g.sessionOpen = false
-                sessionActions[currentIndex].running = true
+                if (currentIndex === 0) lockScreen.lock()
+                else                    sessionActions[currentIndex].running = true
             }
 
             // ── Navegação por teclado ─────────────────────────
@@ -538,7 +585,7 @@ ShellRoot {
                     hoverEnabled: true
                     onEntered: sessionBox.currentIndex = 0
                     onClicked: { g.sessionOpen = false
-                    lockProc.running = true } }
+                    lockScreen.lock() } }
             }
 
             // Suspend
