@@ -151,6 +151,8 @@ ShellRoot {
         property int    fsize:    13
 
         property int    cpuUsage:    0
+        property int    volLevel:    0
+        property bool   volMuted:    false
         property int    memUsage:    0
         property int    batLevel:    100
         property bool   batCharging: false
@@ -165,6 +167,33 @@ ShellRoot {
     // ══════════════════════════════════════════════════════
     // SYSTEM PROCESSES
     // ══════════════════════════════════════════════════════
+	Process {
+	    id: volProc
+	    command: ["sh", "-c", "amixer get Master | grep -Po '\\[\\d+%\\]' | head -1 | tr -d '[]%'"]
+	    stdout: SplitParser {
+	        onRead: data => {
+	            if (data && data.trim() !== "") {
+	                g.volLevel = parseInt(data.trim())
+	            }
+	        }
+	    }
+	    Component.onCompleted: running = true
+	}
+
+	Process {
+	    id: volMuteCheckProc
+	    command: ["sh", "-c", "amixer get Master | grep -q '\\[off\\]' && echo 1 || echo 0"]
+	    stdout: SplitParser {
+	        onRead: data => {
+	           if (data) g.volMuted = (data.trim() === "1")
+	        }
+	    }
+	    Component.onCompleted: running = true
+	}
+	Process { id: volUpProc;   command: ["amixer", "set", "Master", "5%+"];   running: false }
+	Process { id: volDownProc; command: ["amixer", "set", "Master", "5%-"];   running: false }
+	Process { id: volMuteProc; command: ["amixer", "set", "Master", "toggle"]; running: false }
+
     Process {
         id: cpuProc
         command: ["sh", "-c", "head -1 /proc/stat"]
@@ -251,6 +280,8 @@ ShellRoot {
                     running: true
                     repeat: true
         onTriggered: {
+	    volProc.running 	  = true
+	    volMuteCheckProc.running = true
             cpuProc.running       = true
             memProc.running       = true
             batProc.running       = true
@@ -422,10 +453,39 @@ ShellRoot {
                 }
             }
 
+
             Rectangle { width: 1
                     height: 18
                     color: g.colMuted }
 
+            // ── Volume ───────────────────────────────────
+// Adicione entre a bateria e o relógio, por exemplo:
+Rectangle { width: 1; height: 18; color: g.colMuted }
+
+RowLayout {
+    spacing: 3
+    Text {
+        text: g.volMuted ? "󰝟 " : (g.volLevel > 50 ? "󰕾 " : g.volLevel > 0 ? "󰖀 " : "󰕿 ")
+        font { family: g.font; pixelSize: g.fsize + 1 }
+        color: g.volMuted ? g.colRed : g.colPurple
+    }
+    Text {
+        text: g.volLevel + "%"
+        font { family: g.font; pixelSize: g.fsize }
+        color: g.volMuted ? g.colMuted : g.colFg
+    }
+    
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
+        onClicked: { volMuteProc.running = true; volProc.running = true }
+        onWheel: (wheel) => {
+            if (wheel.angleDelta.y > 0) volUpProc.running = true;
+            else volDownProc.running = true;
+            volProc.running = true; // Atualiza o valor imediatamente
+        }
+    }
+}
             // ── Clock ───────────────────────────────────
             Text {
                 id: clock
