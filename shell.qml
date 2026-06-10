@@ -329,7 +329,7 @@ ShellRoot {
 
                     Text {
                         anchors.centerIn: parent
-                        text: ""
+                        text: "󰍜"
                         font { family: g.font; pixelSize: 10 }
                         color: g.colBg
                     }
@@ -384,7 +384,7 @@ ShellRoot {
                 RowLayout {
                     spacing: 3
                     Text {
-                        text: " "
+                        text: " "
                         font { family: g.font; pixelSize: g.fsize + 1 }
                         color: g.colYellow
                     }
@@ -401,7 +401,7 @@ ShellRoot {
                 RowLayout {
                     spacing: 3
                     Text {
-                        text: ""
+                        text: " "
                         font { family: g.font; pixelSize: g.fsize + 1 }
                         color: g.colCyan
                     }
