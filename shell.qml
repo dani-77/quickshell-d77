@@ -265,7 +265,7 @@ ShellRoot {
 
             // ── Workspaces ────────────────────────────────
             Repeater {
-                model: 10
+                model: 9
                 Rectangle {
                     required property int index
                     property int  wsId:     index + 1
