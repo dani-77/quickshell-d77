@@ -26,7 +26,7 @@ PanelWindow {
     property int    fsize:    13
 
     // Terminal for apps with Terminal=true
-    property string terminal: "foot"
+    property string terminal: "kitty"
 
     // ══════════════════════════════════════════════════════
     // STATE
@@ -211,7 +211,7 @@ PanelWindow {
 
                 onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
-                delegate: Rectangle {
+ delegate: Rectangle {
                     required property int index
                     required property var modelData
 
@@ -234,6 +234,20 @@ PanelWindow {
                             height: 26
                             radius: 2
                             color: index === launcher.selected ? launcher.colPurple : "transparent"
+                        }
+
+                        // ── App icon ──────────
+                        Image {
+                            width:  28
+                            height: 28
+                            source: modelData.icon
+                                ? "image://icon/" + modelData.icon
+                                : ""
+                            sourceSize.width:  28
+                            sourceSize.height: 28
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            visible: modelData.icon !== ""
                         }
 
                         ColumnLayout {
