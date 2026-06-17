@@ -36,7 +36,7 @@ ShellRoot {
         font:      g.font
         fsize:     g.fsize
         // Terminal used for apps with Terminal=true (adjust as needed).
-        terminal:  "foot"
+        terminal:  "alacritty"
     }
 
     // ══════════════════════════════════════════════════════
@@ -680,6 +680,7 @@ ShellRoot {
                         Text {
                             text: "Lock"
                             font { family: g.font; pixelSize: g.fsize }
+                            anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
                     }
@@ -713,6 +714,7 @@ ShellRoot {
                         Text {
                             text: "Suspend"
                             font { family: g.font; pixelSize: g.fsize }
+                            anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
                     }
@@ -746,6 +748,7 @@ ShellRoot {
                         Text {
                             text: "Reboot"
                             font { family: g.font; pixelSize: g.fsize }
+                            anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
                     }
@@ -779,6 +782,7 @@ ShellRoot {
                         Text {
                             text: "Shutdown"
                             font { family: g.font; pixelSize: g.fsize }
+                            anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
                     }
@@ -812,7 +816,8 @@ ShellRoot {
                         Text {
                             text: "Logout"
                             font { family: g.font; pixelSize: g.fsize }
-                            color: g.colFg
+                            anchors.horizontalCenter: parent.horizontalCenter
+		            color: g.colFg
                         }
                     }
                     MouseArea {
