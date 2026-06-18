@@ -35,8 +35,6 @@ ShellRoot {
         colPurple: g.colPurple
         font:      g.font
         fsize:     g.fsize
-        // Terminal used for apps with Terminal=true (adjust as needed).
-        terminal:  "alacritty"
     }
 
     // ══════════════════════════════════════════════════════

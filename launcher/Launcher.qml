@@ -25,8 +25,31 @@ PanelWindow {
     property string font:     "JetBrainsMono Nerd Font"
     property int    fsize:    13
 
-    // Terminal for apps with Terminal=true
+    // Terminal for apps with Terminal=true.
+    // Auto-detected at startup from the preferred list below.
+    // Override in shell.qml if you want to force a specific one.
     property string terminal: "kitty"
+    property var _termCandidates: ["alacritty", "kitty", "foot", "wezterm", "xterm"]
+    property int _termIdx: 0
+
+    Process {
+        id: termDetect
+        command: ["sh", "-c", "command -v " + launcher._termCandidates[launcher._termIdx]]
+        running: true
+        stdout: SplitParser {
+            onRead: function(line) {
+                launcher.terminal = launcher._termCandidates[launcher._termIdx]
+            }
+        }
+        onExited: function(code) {
+            if (code !== 0) {
+                if (launcher._termIdx + 1 < launcher._termCandidates.length) {
+                    launcher._termIdx++
+                    termDetect.running = true
+                }
+            }
+        }
+    }
 
     // ══════════════════════════════════════════════════════
     // STATE
