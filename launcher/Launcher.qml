@@ -105,7 +105,7 @@ PanelWindow {
         if (!app || !app.exec)
             return
 
-        var cmd = app.exec
+        var cmd = app.exec.replace(/%[uUfFdDnNickvm]/g, "").trim()
         if (app.terminal)
             cmd = launcher.terminal + " -e " + cmd
 
