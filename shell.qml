@@ -17,6 +17,10 @@ import "lockscreen"
 // Exposes Osd (volume + brightness on-screen display)
 import "osd"
 
+// Wallpaper picker module (wallpaper dir).
+// Exposes Wallpaper
+import "wallpaper"
+
 ShellRoot {
 
     // ══════════════════════════════════════════════════════
@@ -35,6 +39,27 @@ ShellRoot {
         colPurple: g.colPurple
         font:      g.font
         fsize:     g.fsize
+        // Terminal used for apps with Terminal=true (adjust as needed).
+        terminal:  "alacritty"
+    }
+
+    // ══════════════════════════════════════════════════════
+    // WALLPAPER PICKER
+    // ══════════════════════════════════════════════════════
+    // Native wallpaper picker. Scans wallpaperDir for images
+    // and applies the selection through hyprpaper (hyprctl IPC).
+    // Toggle with wallpaperPicker.toggle().
+    Wallpaper {
+        id: wallpaperPicker
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colCyan:   g.colCyan
+        colBlue:   g.colBlue
+        colPurple: g.colPurple
+        font:      g.font
+        fsize:     g.fsize
+        wallpaperDir: "$HOME/Wallpaper"
     }
 
     // ══════════════════════════════════════════════════════
@@ -153,6 +178,34 @@ ShellRoot {
         function showVolume(): void { osd.showVolume() }
         // Apenas mostra o OSD de brilho (sem alterar).
         function showBrightness(): void { osd.showBrightness() }
+    }
+
+    // Wallpaper picker IPC.
+    //   qs ipc call wallpaper toggle
+    //   qs ipc call wallpaper open
+    //   qs ipc call wallpaper close
+    //   qs ipc call wallpaper reload
+    //   qs ipc call wallpaper set /caminho/para/imagem.png
+    //   qs ipc call wallpaper random
+    //
+    // Exemplo de bind no hyprland.conf:
+    //   bind = SUPER, W, exec, qs ipc call wallpaper toggle
+    IpcHandler {
+        target: "wallpaper"
+
+        // Alterna a visibilidade do picker.
+        function toggle(): void { wallpaperPicker.toggle() }
+        // Abre o picker e refaz o scan do diretório.
+        function open(): void { wallpaperPicker.open() }
+        // Fecha o picker.
+        function close(): void { wallpaperPicker.close() }
+        // Refaz o scan do diretório sem abrir/fechar o picker.
+        function reload(): void { wallpaperPicker.reload() }
+        // Aplica diretamente um wallpaper por caminho, sem abrir o picker.
+        // Útil em scripts: qs ipc call wallpaper set /home/daniel/Wallpaper/foo.png
+        function set(path: string): void { wallpaperPicker.apply(path) }
+        // Aplica um wallpaper aleatório da lista já carregada.
+        function random(): void { wallpaperPicker.applyRandom() }
     }
 
     // ── Global Hyprland keybinds (fallback) ───────────────
