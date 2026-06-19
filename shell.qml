@@ -504,7 +504,7 @@ ShellRoot {
                 RowLayout {
                     spacing: 3
                     Text {
-                        text: " "
+                        text: "  "
                         font { family: g.font; pixelSize: g.fsize + 1 }
                         color: g.colCyan
                     }
