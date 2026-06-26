@@ -377,7 +377,7 @@ ShellRoot {
     Process { id: suspendProc;  command: ["loginctl", "suspend"];   running: false }
     Process { id: rebootProc;   command: ["loginctl", "reboot"];    running: false }
     Process { id: shutdownProc; command: ["loginctl", "poweroff"];  running: false }
-    Process { id: logoutProc;   command: ["sh", "-c", "kill -9 -1"]; running: false }
+    Process { id: logoutProc;   command: ["hyprctl", "dispatch", "hl.dsp.exit()"]; running: false }
 
     // Periodically refresh all the polled system stats.
     Timer {
