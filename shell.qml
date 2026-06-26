@@ -360,7 +360,7 @@ ShellRoot {
     // Reads the currently connected Wi-Fi SSID (shows "Offline" if none).
     Process {
         id: wifiProc
-        command: ["sh", "-c", "nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^sim' | cut -d: -f2 | head -1"]
+        command: ["sh", "-c", "LANG=C nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes' | cut -d: -f2 | head -1"]
         stdout: SplitParser {
             onRead: data => { g.wifiSSID = data.trim() !== "" ? data.trim() : "Offline" }
         }
