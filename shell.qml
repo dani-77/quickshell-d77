@@ -725,12 +725,12 @@ ShellRoot {
                         spacing: 8
                         Text {
                             text: "󰌾"
-                            font { family: g.font; pixelSize: 16 }
+                            font { family: g.font; pixelSize: g.fsize + 2 }
                             color: g.colBlue
                         }
                         Text {
                             text: "Lock"
-                            font { family: g.font; pixelSize: g.fsize }
+                            font { family: g.font; pixelSize: g.fsize + 1 }
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
@@ -759,12 +759,12 @@ ShellRoot {
                         spacing: 8
                         Text {
                             text: "󰒲"
-                            font { family: g.font; pixelSize: 16 }
+                            font { family: g.font; pixelSize: g.fsize + 2 }
                             color: g.colYellow
                         }
                         Text {
                             text: "Suspend"
-                            font { family: g.font; pixelSize: g.fsize }
+                            font { family: g.font; pixelSize: g.fsize + 1 }
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
@@ -793,12 +793,12 @@ ShellRoot {
                         spacing: 8
                         Text {
                             text: "󰑓"
-                            font { family: g.font; pixelSize: 16 }
+                            font { family: g.font; pixelSize: g.fsize + 2 }
                             color: g.colYellow
                         }
                         Text {
                             text: "Reboot"
-                            font { family: g.font; pixelSize: g.fsize }
+                            font { family: g.font; pixelSize: g.fsize + 1 }
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
@@ -827,12 +827,12 @@ ShellRoot {
                         spacing: 8
                         Text {
                             text: "󰐥"
-                            font { family: g.font; pixelSize: 16 }
+                            font { family: g.font; pixelSize: g.fsize + 2 }
                             color: g.colRed
                         }
                         Text {
                             text: "Shutdown"
-                            font { family: g.font; pixelSize: g.fsize }
+                            font { family: g.font; pixelSize: g.fsize + 1 }
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: g.colFg
                         }
@@ -861,14 +861,14 @@ ShellRoot {
                         spacing: 8
                         Text {
                             text: "󰍃"
-                            font { family: g.font; pixelSize: 16 }
+                            font { family: g.font; pixelSize: g.fsize + 2 }
                             color: g.colMuted
                         }
                         Text {
                             text: "Logout"
-                            font { family: g.font; pixelSize: g.fsize }
+                            font { family: g.font; pixelSize: g.fsize + 1 }
                             anchors.horizontalCenter: parent.horizontalCenter
-		            color: g.colFg
+                            color: g.colFg
                         }
                     }
                     MouseArea {
