@@ -17,6 +17,10 @@ import "lockscreen"
 // Exposes Osd (volume + brightness on-screen display)
 import "osd"
 
+// Dashboard native module (dashboard dir).
+// Exposes Dashboard (quick info panel: stats, weather, cmus, session)
+import "dashboard"
+
 // Wallpaper picker module (wallpaper dir).
 // Exposes Wallpaper
 import "wallpaper"
@@ -103,6 +107,41 @@ ShellRoot {
     }
 
     // ══════════════════════════════════════════════════════
+    // DASHBOARD (painel rápido: stats, meteorologia, cmus, sessão)
+    // ══════════════════════════════════════════════════════
+    // Port do dashboard.py do fabric-d77. Aparece no canto
+    // superior esquerdo, por baixo da barra. Alternado por
+    // IPC (qs ipc call dashboard toggle) ou pelo GlobalShortcut
+    // "dashboard" (sugestão: SUPER, I).
+    Dashboard {
+        id: dashboard
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colCyan:   g.colCyan
+        colBlue:   g.colBlue
+        colYellow: g.colYellow
+        colGreen:  g.colGreen
+        colRed:    g.colRed
+        colPurple: g.colPurple
+        font:      g.font
+        fsize:     g.fsize
+
+        // A barra reserva automaticamente uma exclusive zone igual à sua
+        // altura (margins.top + implicitHeight), e o Hyprland já desloca
+        // esta janela para baixo dessa zona antes de aplicar margins.top.
+        // Por isso basta usar o próprio margins.top da barra aqui, para
+        // sobrar o mesmo espaço que a barra tem em relação ao ecrã.
+        marginTop:  bar.margins.top
+        marginLeft: bar.margins.left
+
+        onLockRequested:     lockScreen.lock()
+        onLogoutRequested:   logoutProc.running = true
+        onRebootRequested:   rebootProc.running = true
+        onPoweroffRequested: shutdownProc.running = true
+    }
+
+    // ══════════════════════════════════════════════════════
     // IPC (recommended way to control the launcher/session)
     // ══════════════════════════════════════════════════════
     // Exposes externally callable methods via:
@@ -180,6 +219,23 @@ ShellRoot {
         function showBrightness(): void { osd.showBrightness() }
     }
 
+    // Dashboard IPC (painel rápido de informação/sessão).
+    //   qs ipc call dashboard toggle
+    //   qs ipc call dashboard open
+    //   qs ipc call dashboard close
+    // Exemplo de bind no hyprland.conf:
+    //   bind = SUPER, I, exec, qs ipc call dashboard toggle
+    IpcHandler {
+        target: "dashboard"
+
+        // Alterna a visibilidade do painel.
+        function toggle(): void { dashboard.toggle() }
+        // Abre o painel.
+        function open(): void { dashboard.open() }
+        // Fecha o painel.
+        function close(): void { dashboard.close() }
+    }
+
     // Wallpaper picker IPC.
     //   qs ipc call wallpaper toggle
     //   qs ipc call wallpaper open
@@ -234,6 +290,13 @@ ShellRoot {
         name: "lock"
         description: "Lock the screen (native lockscreen)"
         onPressed: lockScreen.lock()
+    }
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "dashboard"
+        description: "open/close the quick info dashboard (stats, weather, cmus, session)"
+        onPressed: dashboard.toggle()
     }
 
     // ══════════════════════════════════════════════════════
