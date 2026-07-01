@@ -99,7 +99,7 @@ PanelWindow {
     visible: false
     color: "transparent"
 
-    implicitWidth:  400
+    implicitWidth:  460
     implicitHeight: mainCol.implicitHeight + 32
 
     anchors.top:  true
