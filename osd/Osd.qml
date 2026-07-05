@@ -39,6 +39,7 @@ Scope {
     property color colPurple: "#bb9af7"
     property color colRed:    "#f7768e"
     property color colYellow: "#e0af68"
+    property color colGreen:  "#9ece6a"
     property string font:     "JetBrainsMono Nerd Font"
     property int    fsize:    13
 
@@ -54,9 +55,13 @@ Scope {
     property int    volLevel:  0      // 0..100
     property bool   volMuted:  false
     property int    briLevel:  0      // 0..100
-    // Modo atual do overlay: "volume" ou "brightness".
+    // Perfil de energia atual: "performance", "balanced" ou "power-saver".
+    property string powerProfile: "balanced"
+    // Modo atual do overlay: "volume", "brightness" ou "power".
     property string mode:      "volume"
     property bool   shouldShow: false
+    // Ordem de ciclo do perfil de energia (power-profiles-daemon).
+    readonly property var _powerOrder: ["performance", "balanced", "power-saver"]
 
     // ──────────────────────────────────────────────────
     // API PÚBLICA
@@ -94,6 +99,19 @@ Scope {
         briSetProc.command = ["sh", "-c", root._briReadCmd()]
         briSetProc.running = true
     }
+    // Avança para o próximo perfil de energia (performance → balanced
+    // → power-saver → performance...) via power-profiles-daemon.
+    function cyclePowerProfile() {
+        var idx  = root._powerOrder.indexOf(root.powerProfile)
+        var next = root._powerOrder[(idx + 1) % root._powerOrder.length]
+        powerProfileProc.command = ["sh", "-c",
+            "powerprofilesctl set " + next + " >/dev/null 2>&1; powerprofilesctl get"]
+        powerProfileProc.running = true
+    }
+    function showPowerProfile() {
+        powerProfileProc.command = ["sh", "-c", "powerprofilesctl get"]
+        powerProfileProc.running = true
+    }
 
     // ── Helpers (comandos de leitura) ───────────────────
     // Devolve "<nivel> <muted>" — ex.: "45 0".
@@ -106,6 +124,29 @@ Scope {
     // Devolve o brilho em % (campo 4 de `brightnessctl -m`).
     function _briReadCmd() {
         return "brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d '%'"
+    }
+    // Ícone (Nerd Font), cor e etiqueta associados a cada perfil.
+    function _powerIcon() {
+        if (root.powerProfile === "performance")  return "󰓅"
+        if (root.powerProfile === "power-saver")   return "󰌪"
+        return "󰗑"
+    }
+    function _powerColor() {
+        if (root.powerProfile === "performance")  return root.colRed
+        if (root.powerProfile === "power-saver")   return root.colGreen
+        return root.colBlue
+    }
+    function _powerLabel() {
+        if (root.powerProfile === "performance")  return "Performance"
+        if (root.powerProfile === "power-saver")   return "Power saver"
+        return "Balanced"
+    }
+    // Nível "de gauge" (0..1) usado na barra: quanto mais perto de
+    // performance, mais cheia — puramente decorativo.
+    function _powerLevel() {
+        var idx = root._powerOrder.indexOf(root.powerProfile)
+        if (idx < 0) idx = 1
+        return (root._powerOrder.length - idx) / root._powerOrder.length
     }
 
     function _reveal() {
@@ -144,6 +185,34 @@ Scope {
                 root.briLevel = parseInt(data.trim())
                 root.mode = "brightness"
                 root._reveal()
+            }
+        }
+    }
+
+    // Troca (ou apenas lê, via showPowerProfile) o perfil de energia
+    // e mostra o OSD com o resultado.
+    Process {
+        id: powerProfileProc
+        running: false
+        stdout: SplitParser {
+            onRead: data => {
+                if (!data || data.trim() === "") return
+                root.powerProfile = data.trim()
+                root.mode = "power"
+                root._reveal()
+            }
+        }
+    }
+
+    // Leitura silenciosa do perfil atual ao arrancar (sem mostrar OSD),
+    // para o primeiro clique já ciclar a partir do estado real.
+    Process {
+        id: powerProfileInitProc
+        running: true
+        command: ["sh", "-c", "powerprofilesctl get"]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data && data.trim() !== "") root.powerProfile = data.trim()
             }
         }
     }
@@ -275,10 +344,12 @@ Scope {
                         font.family: root.font
                         font.pixelSize: 22
                         color: {
+                            if (root.mode === "power") return root._powerColor()
                             if (root.mode === "brightness") return root.colYellow
                             return root.volMuted ? root.colRed : root.colPurple
                         }
                         text: {
+                            if (root.mode === "power") return root._powerIcon()
                             if (root.mode === "brightness") {
                                 return root.briLevel > 66 ? "󰃠" : root.briLevel > 33 ? "󰃟" : "󰃞"
                             }
@@ -302,11 +373,14 @@ Scope {
                             }
                             radius: parent.radius
                             width: parent.width * (
-                                root.mode === "brightness"
-                                    ? Math.max(0, Math.min(1, root.briLevel / 100))
-                                    : (root.volMuted ? 0 : Math.max(0, Math.min(1, root.volLevel / 100)))
+                                root.mode === "power"
+                                    ? root._powerLevel()
+                                    : root.mode === "brightness"
+                                        ? Math.max(0, Math.min(1, root.briLevel / 100))
+                                        : (root.volMuted ? 0 : Math.max(0, Math.min(1, root.volLevel / 100)))
                             )
                             color: {
+                                if (root.mode === "power") return root._powerColor()
                                 if (root.mode === "brightness") return root.colYellow
                                 return root.volMuted ? root.colMuted : root.colPurple
                             }
@@ -316,18 +390,21 @@ Scope {
                         }
                     }
 
-                    // ── Valor numérico ─────────────────────
+                    // ── Valor numérico / etiqueta ───────────
                     Text {
                         Layout.alignment: Qt.AlignVCenter
-                        Layout.preferredWidth: 38
+                        Layout.preferredWidth: root.mode === "power" ? 100 : 38
                         horizontalAlignment: Text.AlignRight
                         font.family: root.font
                         font.pixelSize: root.fsize
                         font.bold: true
                         color: root.colFg
-                        text: root.mode === "brightness"
-                            ? root.briLevel + "%"
-                            : (root.volMuted ? "mute" : root.volLevel + "%")
+                        elide: Text.ElideRight
+                        text: root.mode === "power"
+                            ? root._powerLabel()
+                            : root.mode === "brightness"
+                                ? root.briLevel + "%"
+                                : (root.volMuted ? "mute" : root.volLevel + "%")
                     }
                 }
             }

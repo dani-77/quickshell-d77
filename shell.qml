@@ -100,6 +100,7 @@ ShellRoot {
         colPurple: g.colPurple
         colRed:    g.colRed
         colYellow: g.colYellow
+        colGreen:  g.colGreen
         font:      g.font
         fsize:     g.fsize
         step:      5      // passo de 5% para volume e brilho
@@ -436,6 +437,13 @@ ShellRoot {
         running: false
     }
 
+    // Abre o nmtui num terminal flutuante (mesma lógica do dashboard).
+    Process {
+        id: nmtuiBarProc
+        running: false
+        command: ["sh", "-c", dashboard.nmtuiLaunchCommand()]
+    }
+
     // Session processes (triggered from the session menu).
     Process { id: suspendProc;  command: ["loginctl", "suspend"];   running: false }
     Process { id: rebootProc;   command: ["loginctl", "reboot"];    running: false }
@@ -624,6 +632,7 @@ ShellRoot {
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
                 // ── Wi-Fi ─────────────────────────────────────
+                // Clicar abre o nmtui num terminal flutuante.
                 RowLayout {
                     spacing: 3
                     Text {
@@ -636,11 +645,18 @@ ShellRoot {
                         font { family: g.font; pixelSize: g.fsize }
                         color: g.colFg
                     }
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        onClicked: nmtuiBarProc.running = true
+                    }
                 }
 
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
                 // ── Battery ───────────────────────────────────
+                // Clicar faz cycle ao perfil de energia (power-profiles-daemon)
+                // e mostra o resultado no OSD.
                 RowLayout {
                     spacing: 3
                     Text {
@@ -657,6 +673,11 @@ ShellRoot {
                         text: g.batLevel + "%"
                         font { family: g.font; pixelSize: g.fsize }
                         color: g.batLevel < 20 ? g.colRed : g.batLevel < 50 ? g.colYellow : g.colGreen
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        onClicked: osd.cyclePowerProfile()
                     }
                 }
 

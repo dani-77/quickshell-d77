@@ -306,14 +306,20 @@ PanelWindow {
         }
     }
 
-    // Abre o nmtui num terminal e fecha o painel.
+    // Comando de shell que abre o nmtui num terminal flutuante
+    // (janela marcada com a classe "nmtui-float", ver windowrule
+    // no hyprland.lua). Reutilizado também pela barra.
+    function nmtuiLaunchCommand() {
+        return dash.terminal === "wezterm"
+            ? "setsid wezterm start --class nmtui-float -- nmtui >/dev/null 2>&1 &"
+            : "setsid " + dash.terminal + " --class nmtui-float -e nmtui >/dev/null 2>&1 &"
+    }
+
+    // Abre o nmtui num terminal flutuante e fecha o painel.
     Process {
         id: nmtuiProc
         running: false
-        command: ["sh", "-c",
-            dash.terminal === "wezterm"
-                ? "setsid wezterm start -- nmtui >/dev/null 2>&1 &"
-                : "setsid " + dash.terminal + " -e nmtui >/dev/null 2>&1 &"]
+        command: ["sh", "-c", dash.nmtuiLaunchCommand()]
     }
 
     // ══════════════════════════════════════════════════════
