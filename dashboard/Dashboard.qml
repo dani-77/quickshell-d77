@@ -1,17 +1,17 @@
 // ══════════════════════════════════════════════════════
 // Dashboard.qml
-// Overlay de informação rápida no canto superior esquerdo
-// (por baixo da barra): CPU/RAM/temperatura/disco, meteorologia,
-// controlos cmus, atalho para nmtui e ações de sessão.
+// Quick-info overlay in the top-left corner
+// (below the bar): CPU/RAM/temperature/disk, weather,
+// cmus controls, nmtui shortcut, and session actions.
 //
-// Port do dashboard.py do fabric-d77 para quickshell nativo,
-// mantendo a mesma paleta Tokyo Night e as mesmas fontes de
-// informação (psutil → /proc, wttr.in, cmus-remote, iw/nmcli).
+// Port of dashboard.py from fabric-d77 to native quickshell,
+// keeping the same Tokyo Night palette and the same data
+// sources (/proc, wttr.in, cmus-remote, iw/nmcli).
 //
-// API pública (normalmente acionada por IPC / keybinds):
-//   toggle() — abre/fecha o painel
-//   open()   — abre o painel
-//   close()  — fecha o painel
+// Public API (normally triggered via IPC / keybinds):
+//   toggle() — opens/closes the panel
+//   open()   — opens the panel
+//   close()  — closes the panel
 // ══════════════════════════════════════════════════════
 import QtQuick
 import QtQuick.Layouts
@@ -22,7 +22,7 @@ import Quickshell.Io
 PanelWindow {
     id: dash
 
-    // ── Tema (Tokyo Night por defeito; pode ser sobreposto) ──
+    // ── Theme (Tokyo Night by default; can be overridden) ──
     property color colBg:     "#1a1b26"
     property color colFg:     "#a9b1d6"
     property color colMuted:  "#444b6a"
@@ -35,24 +35,24 @@ PanelWindow {
     property string font:     "JetBrainsMono Nerd Font"
     property int    fsize:    13
 
-    // Posição: por baixo da barra, alinhado à esquerda.
+    // Position: below the bar, aligned to the left.
     property int marginTop:  60
     property int marginLeft: 10
 
-    // ── Sinais de sessão (ligar a lockScreen/procs no shell.qml) ──
+    // ── Session signals (connect to lockScreen/procs in shell.qml) ──
     signal lockRequested()
     signal logoutRequested()
     signal rebootRequested()
     signal poweroffRequested()
 
     // ══════════════════════════════════════════════════════
-    // ESTADO
+    // STATE
     // ══════════════════════════════════════════════════════
     property int    cpuPercent:  0
     property int    ramPercent:  0
     property string tempText:    "N/A"
     property int    diskPercent: 0
-    property string weatherText: "a carregar…"
+    property string weatherText: "loading…"
 
     property bool   cmusRunning: false
     property string cmusStatus:  "stopped"
@@ -71,7 +71,7 @@ PanelWindow {
     // ── Public API ───────────────────────────────────────
     function open() {
         visible = true
-        weatherText = "a carregar…"
+        weatherText = "loading…"
         weatherProc.running = true
         _refreshAll()
         focusItem.forceActiveFocus()
@@ -113,7 +113,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     WlrLayershell.namespace:     "quickshell-dashboard"
 
-    // ── Deteção de terminal (para o atalho nmtui) ─────────
+    // ── Terminal detection (for the nmtui shortcut) ─────────
     Process {
         id: termDetect
         command: ["sh", "-c", "command -v " + dash._termCandidates[dash._termIdx]]
@@ -132,10 +132,10 @@ PanelWindow {
     }
 
     // ══════════════════════════════════════════════════════
-    // PROCESSOS — leitura periódica de estado
+    // PROCESSES — periodic state reads
     // ══════════════════════════════════════════════════════
 
-    // CPU: delta de /proc/stat (igual ao usado na barra).
+    // CPU: delta from /proc/stat (same method as the bar).
     Process {
         id: cpuProc
         running: false
@@ -171,7 +171,7 @@ PanelWindow {
         }
     }
 
-    // Temperatura da CPU: tenta `sensors`, cai para thermal_zone0.
+    // CPU temperature: tries `sensors`, falls back to thermal_zone0.
     Process {
         id: tempProc
         running: false
@@ -184,7 +184,7 @@ PanelWindow {
         }
     }
 
-    // Disco (partição raiz).
+    // Disk (root partition).
     Process {
         id: diskProc
         running: false
@@ -197,7 +197,7 @@ PanelWindow {
         }
     }
 
-    // Meteorologia (wttr.in), pedido único por abertura.
+    // Weather (wttr.in), one request per open().
     Process {
         id: weatherProc
         running: false
@@ -210,7 +210,7 @@ PanelWindow {
         }
     }
 
-    // Estado do cmus.
+    // cmus state.
     Process {
         id: cmusProc
         running: false
@@ -248,7 +248,7 @@ PanelWindow {
         }
     }
 
-    // Estado de rede (wifi / cabo / offline).
+    // Network state (wifi / wired / offline).
     Process {
         id: netProc
         running: false
@@ -266,7 +266,7 @@ PanelWindow {
         }
     }
 
-    // Refresca os quadros enquanto o painel estiver visível.
+    // Refreshes the cards while the panel is visible.
     Timer {
         interval: 2000
         running: dash.visible
@@ -274,16 +274,16 @@ PanelWindow {
         onTriggered: dash._refreshAll()
     }
 
-    // ── cmus: ações (one-shot) ────────────────────────────
+    // ── cmus: actions (one-shot) ────────────────────────────
     Process { id: cmusPrevProc;  command: ["cmus-remote", "-r"]; running: false; onExited: cmusProc.running = true }
     Process { id: cmusToggleProc; command: ["cmus-remote", "-u"]; running: false; onExited: cmusProc.running = true }
     Process { id: cmusNextProc;  command: ["cmus-remote", "-n"]; running: false; onExited: cmusProc.running = true }
 
-    // Arranca o cmus em sessão tmux/screen destacada.
-    // O ambiente (XDG_RUNTIME_DIR/HOME) é passado explicitamente ao cmus,
-    // porque uma sessão tmux existente/antiga pode ter herdado variáveis
-    // diferentes do servidor tmux original, fazendo o cmus escrever o
-    // socket de controlo num sítio que o cmus-remote não encontra.
+    // Starts cmus in a detached tmux/screen session.
+    // The environment (XDG_RUNTIME_DIR/HOME) is passed explicitly to cmus,
+    // because an existing/old tmux session may have inherited different
+    // variables from the original tmux server, causing cmus to write its
+    // control socket somewhere cmus-remote cannot find.
     Process {
         id: cmusStartProc
         running: false
@@ -295,9 +295,9 @@ PanelWindow {
         onExited: cmusRestartTimer.start()
     }
 
-    // Pequeno atraso antes de reconsultar o cmus: logo a seguir a arrancar
-    // (dentro do tmux) o processo ainda não terminou de inicializar a
-    // biblioteca nem de criar o socket de controlo.
+    // Small delay before re-querying cmus: right after startup
+    // (inside tmux) the process has not yet finished initialising its
+    // library or creating the control socket.
     Timer {
         id: cmusRestartTimer
         interval: 1200
@@ -306,16 +306,16 @@ PanelWindow {
         }
     }
 
-    // Comando de shell que abre o nmtui num terminal flutuante
-    // (janela marcada com a classe "nmtui-float", ver windowrule
-    // no hyprland.lua). Reutilizado também pela barra.
+    // Shell command that opens nmtui in a floating terminal
+    // (window marked with class "nmtui-float", see windowrule
+    // in hyprland.lua). Also reused by the bar.
     function nmtuiLaunchCommand() {
         return dash.terminal === "wezterm"
             ? "setsid wezterm start --class nmtui-float -- nmtui >/dev/null 2>&1 &"
             : "setsid " + dash.terminal + " --class nmtui-float -e nmtui >/dev/null 2>&1 &"
     }
 
-    // Abre o nmtui num terminal flutuante e fecha o painel.
+    // Opens nmtui in a floating terminal and closes the panel.
     Process {
         id: nmtuiProc
         running: false
@@ -325,7 +325,7 @@ PanelWindow {
     // ══════════════════════════════════════════════════════
     // LAYOUT
     // ══════════════════════════════════════════════════════
-    // Item invisível para capturar o Escape (fecha o painel).
+    // Invisible item to capture Escape (closes the panel).
     Item {
         id: focusItem
         anchors.fill: parent
@@ -342,7 +342,7 @@ PanelWindow {
 
         function g_border() { return Qt.rgba(0.27, 0.29, 0.42, 0.6) }
 
-        MouseArea { anchors.fill: parent } // impede cliques de atravessar
+        MouseArea { anchors.fill: parent } // prevent clicks from passing through
 
         ColumnLayout {
             id: mainCol
@@ -352,7 +352,7 @@ PanelWindow {
             }
             spacing: 10
 
-            // ── Quadros de sistema ─────────────────────────
+            // ── System cards ─────────────────────────
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -381,7 +381,7 @@ PanelWindow {
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 2
-                        Text { text: ""; font.family: dash.font; font.pixelSize: 20; color: dash.colCyan; Layout.alignment: Qt.AlignHCenter }
+                        Text { text: ""; font.family: dash.font; font.pixelSize: 20; color: dash.colCyan; Layout.alignment: Qt.AlignHCenter }
                         Text { text: dash.ramPercent + "%"; font.family: dash.font; font.pixelSize: dash.fsize + 1; font.bold: true; color: dash.colFg; Layout.alignment: Qt.AlignHCenter }
                         Text { text: "RAM"; font.family: dash.font; font.pixelSize: dash.fsize - 3; color: dash.colMuted; Layout.alignment: Qt.AlignHCenter }
                     }
@@ -418,7 +418,7 @@ PanelWindow {
                 }
             }
 
-            // ── Meteorologia ────────────────────────────────
+            // ── Weather ────────────────────────────────
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 56
@@ -452,7 +452,7 @@ PanelWindow {
 
                     Text { text: "󰎈"; font.family: dash.font; font.pixelSize: 22; color: dash.colPurple }
 
-                    // Estado: a correr — faixa + controlos.
+                    // State: running — track + controls.
                     RowLayout {
                         visible: dash.cmusRunning
                         Layout.fillWidth: true
@@ -467,19 +467,19 @@ PanelWindow {
                         RowLayout {
                             spacing: 2
                             Text {
-                                text: ""
+                                text: ""
                                 font.family: dash.font; font.pixelSize: 18
                                 color: dash.colFg
                                 MouseArea { anchors.fill: parent; onClicked: cmusPrevProc.running = true }
                             }
                             Text {
-                                text: dash.cmusStatus === "playing" ? "" : ""
+                                text: dash.cmusStatus === "playing" ? "" : ""
                                 font.family: dash.font; font.pixelSize: 18
                                 color: dash.colFg
                                 MouseArea { anchors.fill: parent; onClicked: cmusToggleProc.running = true }
                             }
                             Text {
-                                text: ""
+                                text: ""
                                 font.family: dash.font; font.pixelSize: 18
                                 color: dash.colFg
                                 MouseArea { anchors.fill: parent; onClicked: cmusNextProc.running = true }
@@ -487,10 +487,10 @@ PanelWindow {
                         }
                     }
 
-                    // Estado: parado — botão de arranque headless.
-                    // Nota: o MouseArea não pode ser filho direto do
-                    // RowLayout (o Layout ignora `anchors` nos seus
-                    // filhos), por isso vai num Item normal por cima.
+                    // State: stopped — headless start button.
+                    // Note: MouseArea cannot be a direct child of
+                    // RowLayout (the Layout ignores `anchors` on its
+                    // children), so it goes in a plain Item on top.
                     Item {
                         visible: !dash.cmusRunning
                         Layout.fillWidth: true
@@ -516,7 +516,7 @@ PanelWindow {
                 }
             }
 
-            // ── Rede (nmtui) ─────────────────────────────────
+            // ── Network (nmtui) ─────────────────────────────
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 56
@@ -546,7 +546,7 @@ PanelWindow {
                 }
             }
 
-            // ── Sessão ────────────────────────────────────────
+            // ── Session ────────────────────────────────────────
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8

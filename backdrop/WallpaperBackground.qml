@@ -2,21 +2,21 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
-// Uma instância por ecrã (Variants sobre Quickshell.screens). Fica na
-// camada "Bottom" do layer-shell — logo ACIMA da camada "Background"
-// onde o hyprpaper desenha o wallpaper real. Isto evita dois clientes
-// wlr-layer-shell a disputar a mesma camada (o que causaria flicker/
-// z-order imprevisível).
+// One instance per screen (Variants over Quickshell.screens). Sits on the
+// "Bottom" layer-shell layer — just ABOVE the "Background" layer where
+// hyprpaper draws the real wallpaper. This avoids two wlr-layer-shell
+// clients competing for the same layer (which would cause flicker /
+// unpredictable z-order).
 //
-// Quando não há wallpaper: só se vê isto (o Backdrop).
-// Quando há wallpaper: o hyprpaper desenha por baixo, e o Backdrop
-// esconde-se (visible: false lá dentro), deixando ver o wallpaper real.
+// When there is no wallpaper: only this (the Backdrop) is visible.
+// When there is a wallpaper: hyprpaper draws beneath it, and the Backdrop
+// hides itself (visible: false inside), letting the real wallpaper show.
 
 Variants {
     id: root
 
     // ══════════════════════════════════════════════════════
-    // THEME (Tokyo Night) — sobreposto a partir de shell.qml (g.*)
+    // THEME (Tokyo Night) — overridden from shell.qml (g.*)
     // ══════════════════════════════════════════════════════
     property color colBg:     "#1a1b26"
     property color colFg:     "#a9b1d6"
@@ -42,7 +42,7 @@ Variants {
 
         color: "transparent"
 
-        // Não intercetar cliques/foco — isto é só decoração de fundo.
+        // Do not intercept clicks/focus — this is purely background decoration.
         mask: Region {
             item: Item {}
         }

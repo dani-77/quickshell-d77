@@ -1,11 +1,11 @@
 import QtQuick
 import "../Services" as Services
 
-// Fundo decorativo mostrado apenas enquanto não houver nenhum wallpaper
-// definido pelo utilizador (WallpaperState.hasWallpaper === false).
-// Assim que um wallpaper é escolhido no picker (Wallpaper.qml), isto
-// esconde-se sozinho, de forma reativa, sem reiniciar o Quickshell.
-// Inspirado no DankBackdrop do DankMaterialShell.
+// Decorative background shown only when no wallpaper is set by the user
+// (WallpaperState.hasWallpaper === false).
+// As soon as a wallpaper is chosen in the picker (Wallpaper.qml), this
+// hides itself reactively, without restarting Quickshell.
+// Inspired by DankBackdrop from DankMaterialShell.
 
 Item {
     id: root
@@ -18,8 +18,8 @@ Item {
     property color colFg:     "#a9b1d6"
     property color colPurple: "#bb9af7"
 
-    // Logo mostrado no canto inferior esquerdo. Troca este ficheiro
-    // (mantém o nome ou ajusta este caminho) pelo teu logo d77 definitivo.
+    // Logo shown in the bottom-left corner. Replace this file
+    // (keep the name or adjust this path) with your definitive d77 logo.
     property string logoSource: "assets/d77-logo.svg"
 
     visible: !Services.WallpaperState.hasWallpaper
@@ -29,7 +29,7 @@ Item {
         color: root.colBg
     }
 
-    // Chevron 1 (mais escuro, atrás)
+    // Chevron 1 (darker, behind)
     Rectangle {
         x: root.width * 0.68
         y: -root.height * 0.3
@@ -39,7 +39,7 @@ Item {
         rotation: 35
     }
 
-    // Chevron 2 (colPurple, sobreposto à frente)
+    // Chevron 2 (colPurple, overlaid in front)
     Rectangle {
         x: root.width * 0.84
         y: -root.height * 0.2
@@ -49,7 +49,7 @@ Item {
         rotation: 35
     }
 
-    // Logo no canto inferior esquerdo, a ~25% de opacidade.
+    // Logo in the bottom-left corner, at ~25% opacity.
     Image {
         anchors.left:   parent.left
         anchors.bottom: parent.bottom

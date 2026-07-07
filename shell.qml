@@ -26,18 +26,18 @@ import "dashboard"
 import "wallpaper"
 
 // Backdrop module (backdrop dir).
-// Exposes Backdrop e WallpaperBackground (fundo decorativo mostrado
-// só enquanto não houver wallpaper definido).
+// Exposes Backdrop and WallpaperBackground (decorative background shown
+// only while no wallpaper is set).
 import "backdrop"
 
 ShellRoot {
 
     // ══════════════════════════════════════════════════════
-    // BACKDROP (fundo decorativo condicional)
+    // BACKDROP (conditional decorative background)
     // ══════════════════════════════════════════════════════
-    // Uma instância por ecrã, na camada Bottom do layer-shell (acima do
-    // hyprpaper, que desenha na camada Background). Só é visível enquanto
-    // Services.WallpaperState.hasWallpaper for false.
+    // One instance per screen, on the Bottom layer-shell layer (above
+    // hyprpaper, which draws on the Background layer). Visible only while
+    // Services.WallpaperState.hasWallpaper is false.
     WallpaperBackground {
         colBg:     g.colBg
         colFg:     g.colFg
@@ -102,11 +102,11 @@ ShellRoot {
     }
 
     // ══════════════════════════════════════════════════════
-    // OSD (On-Screen Display: volume + brilho)
+    // OSD (On-Screen Display: volume + brightness)
     // ══════════════════════════════════════════════════════
-    // Overlay minimalista no canto superior direito, mostrado
-    // durante ~2,5 s sempre que o volume (ALSA) ou o brilho
-    // (brightnessctl) mudam. Controlado por IPC/keybinds.
+    // Minimal overlay in the top-right corner, shown
+    // for ~2.5 s whenever volume (ALSA) or brightness
+    // (brightnessctl) changes. Controlled via IPC/keybinds.
     // Uses the Tokyo Night palette and font defined in "g".
     Osd {
         id: osd
@@ -120,17 +120,16 @@ ShellRoot {
         colGreen:  g.colGreen
         font:      g.font
         fsize:     g.fsize
-        step:      5      // passo de 5% para volume e brilho
-        timeout:   2500   // visível durante 2,5 s
+        step:      5      // 5% step for volume and brightness
+        timeout:   2500   // visible for 2.5 s
     }
 
     // ══════════════════════════════════════════════════════
-    // DASHBOARD (painel rápido: stats, meteorologia, cmus, sessão)
+    // DASHBOARD (quick panel: stats, weather, cmus, session)
     // ══════════════════════════════════════════════════════
-    // Port do dashboard.py do fabric-d77. Aparece no canto
-    // superior esquerdo, por baixo da barra. Alternado por
-    // IPC (qs ipc call dashboard toggle) ou pelo GlobalShortcut
-    // "dashboard" (sugestão: SUPER, I).
+    // Port of dashboard.py from fabric-d77. Appears in the top-left
+    // corner, below the bar. Toggled via IPC (qs ipc call dashboard toggle)
+    // or GlobalShortcut "dashboard" (suggestion: SUPER, I).
     Dashboard {
         id: dashboard
         colBg:     g.colBg
@@ -145,11 +144,11 @@ ShellRoot {
         font:      g.font
         fsize:     g.fsize
 
-        // A barra reserva automaticamente uma exclusive zone igual à sua
-        // altura (margins.top + implicitHeight), e o Hyprland já desloca
-        // esta janela para baixo dessa zona antes de aplicar margins.top.
-        // Por isso basta usar o próprio margins.top da barra aqui, para
-        // sobrar o mesmo espaço que a barra tem em relação ao ecrã.
+        // The bar automatically reserves an exclusive zone equal to its
+        // height (margins.top + implicitHeight), and Hyprland already shifts
+        // this window below that zone before applying margins.top.
+        // So using the bar's own margins.top here is enough to leave
+        // the same gap the bar has relative to the screen.
         marginTop:  bar.margins.top
         marginLeft: bar.margins.left
 
@@ -211,8 +210,8 @@ ShellRoot {
         function toggle(): void { lockScreen.toggle() }
     }
 
-    // OSD IPC (volume via ALSA + brilho via brightnessctl).
-    // Ideal para ligar às teclas multimédia no Hyprland:
+    // OSD IPC (volume via ALSA + brightness via brightnessctl).
+    // Ideal for binding to multimedia keys in Hyprland:
     //   bindel = , XF86AudioRaiseVolume, exec, qs ipc call osd volumeUp
     //   bindel = , XF86AudioLowerVolume, exec, qs ipc call osd volumeDown
     //   bindl  = , XF86AudioMute,        exec, qs ipc call osd volumeMuteToggle
@@ -221,36 +220,36 @@ ShellRoot {
     IpcHandler {
         target: "osd"
 
-        // Sobe o volume (passo definido em Osd.step) e mostra o OSD.
+        // Raises the volume (step defined in Osd.step) and shows the OSD.
         function volumeUp(): void { osd.volumeUp() }
-        // Desce o volume e mostra o OSD.
+        // Lowers the volume and shows the OSD.
         function volumeDown(): void { osd.volumeDown() }
-        // Alterna mute/unmute e mostra o OSD.
+        // Toggles mute/unmute and shows the OSD.
         function volumeMuteToggle(): void { osd.volumeMuteToggle() }
-        // Aumenta o brilho e mostra o OSD.
+        // Increases the brightness and shows the OSD.
         function brightnessUp(): void { osd.brightnessUp() }
-        // Diminui o brilho e mostra o OSD.
+        // Decreases the brightness and shows the OSD.
         function brightnessDown(): void { osd.brightnessDown() }
-        // Apenas mostra o OSD de volume (sem alterar).
+        // Only shows the volume OSD (without changing it).
         function showVolume(): void { osd.showVolume() }
-        // Apenas mostra o OSD de brilho (sem alterar).
+        // Only shows the brightness OSD (without changing it).
         function showBrightness(): void { osd.showBrightness() }
     }
 
-    // Dashboard IPC (painel rápido de informação/sessão).
+    // Dashboard IPC (quick info/session panel).
     //   qs ipc call dashboard toggle
     //   qs ipc call dashboard open
     //   qs ipc call dashboard close
-    // Exemplo de bind no hyprland.conf:
+    // Example bind in hyprland.conf:
     //   bind = SUPER, I, exec, qs ipc call dashboard toggle
     IpcHandler {
         target: "dashboard"
 
-        // Alterna a visibilidade do painel.
+        // Toggles the panel visibility.
         function toggle(): void { dashboard.toggle() }
-        // Abre o painel.
+        // Opens the panel.
         function open(): void { dashboard.open() }
-        // Fecha o painel.
+        // Closes the panel.
         function close(): void { dashboard.close() }
     }
 
@@ -259,31 +258,31 @@ ShellRoot {
     //   qs ipc call wallpaper open
     //   qs ipc call wallpaper close
     //   qs ipc call wallpaper reload
-    //   qs ipc call wallpaper set /caminho/para/imagem.png
+    //   qs ipc call wallpaper set /path/to/image.png
     //   qs ipc call wallpaper random
     //   qs ipc call wallpaper clear
     //
-    // Exemplo de bind no hyprland.conf:
+    // Example bind in hyprland.conf:
     //   bind = SUPER, W, exec, qs ipc call wallpaper toggle
     IpcHandler {
         target: "wallpaper"
 
-        // Alterna a visibilidade do picker.
+        // Toggles the picker visibility.
         function toggle(): void { wallpaperPicker.toggle() }
-        // Abre o picker e refaz o scan do diretório.
+        // Opens the picker and rescans the directory.
         function open(): void { wallpaperPicker.open() }
-        // Fecha o picker.
+        // Closes the picker.
         function close(): void { wallpaperPicker.close() }
-        // Refaz o scan do diretório sem abrir/fechar o picker.
+        // Rescans the directory without opening/closing the picker.
         function reload(): void { wallpaperPicker.reload() }
-        // Aplica diretamente um wallpaper por caminho, sem abrir o picker.
-        // Útil em scripts: qs ipc call wallpaper set /home/daniel/Wallpaper/foo.png
+        // Applies a wallpaper directly by path, without opening the picker.
+        // Useful in scripts: qs ipc call wallpaper set /home/daniel/Wallpaper/foo.png
         function set(path: string): void { wallpaperPicker.apply(path) }
-        // Aplica um wallpaper aleatório da lista já carregada.
+        // Applies a random wallpaper from the already-loaded list.
         function random(): void { wallpaperPicker.applyRandom() }
-        // Remove o wallpaper ativo: descarrega do hyprpaper e apaga o
-        // ficheiro de estado. O backdrop (fundo decorativo) aparece
-        // automaticamente enquanto não houver wallpaper.
+        // Removes the active wallpaper: unloads from hyprpaper and deletes the
+        // state file. The backdrop (decorative background) becomes
+        // visible automatically while no wallpaper is set.
         function clear(): void { wallpaperPicker.clear() }
     }
 
@@ -459,7 +458,7 @@ ShellRoot {
         running: false
     }
 
-    // Abre o nmtui num terminal flutuante (mesma lógica do dashboard).
+    // Opens nmtui in a floating terminal (same logic as the dashboard).
     Process {
         id: nmtuiBarProc
         running: false
@@ -654,7 +653,7 @@ ShellRoot {
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
                 // ── Wi-Fi ─────────────────────────────────────
-                // Clicar abre o nmtui num terminal flutuante.
+                // Clicking opens nmtui in a floating terminal.
                 RowLayout {
                     spacing: 3
                     Text {
@@ -677,8 +676,8 @@ ShellRoot {
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
                 // ── Battery ───────────────────────────────────
-                // Clicar faz cycle ao perfil de energia (power-profiles-daemon)
-                // e mostra o resultado no OSD.
+                // Clicking cycles the power profile (power-profiles-daemon)
+                // and shows the result in the OSD.
                 RowLayout {
                     spacing: 3
                     Text {

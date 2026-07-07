@@ -198,7 +198,7 @@ PanelWindow {
         }
         onExited: function(code) {
             if (code !== 0)
-                wallpaper.lastError = "wallpaper falhou (código " + code + ")"
+                wallpaper.lastError = "wallpaper failed (code " + code + ")"
         }
     }
 
@@ -213,7 +213,7 @@ PanelWindow {
         running: false
         onExited: function(code) {
             if (code !== 0)
-                wallpaper.lastError = "clear falhou (código " + code + ")"
+                wallpaper.lastError = "clear failed (code " + code + ")"
         }
     }
 
@@ -235,7 +235,7 @@ PanelWindow {
         }
         onExited: function(code) {
             if (code !== 0) {
-                wallpaper.lastError = "Falha ao detectar monitor (jq/hyprctl em falta?)"
+                wallpaper.lastError = "Failed to detect monitor (jq/hyprctl missing?)"
                 wallpaper._pendingApplyPath = ""
             }
         }
@@ -299,7 +299,7 @@ PanelWindow {
 
                 Text {
                     visible: wallpaper.loading
-                    text: "Carregando..."
+                    text: "Loading..."
                     font.family: wallpaper.font
                     font.pixelSize: wallpaper.fsize - 1
                     color: wallpaper.colMuted
@@ -312,7 +312,7 @@ PanelWindow {
                     color: wallpaper.colMuted
                 }
 
-                // Reset wallpaper: volta ao backdrop decorativo (Backdrop.qml).
+                // Reset wallpaper: returns to the decorative backdrop (Backdrop.qml).
                 Rectangle {
                     id: resetBtn
                     Layout.leftMargin: 4
@@ -448,8 +448,8 @@ PanelWindow {
                     anchors.centerIn: parent
                     visible: wallpaper.images.length === 0
                     text: wallpaper.loading
-                        ? "Carregando wallpapers..."
-                        : "Nenhuma imagem encontrada em\n" + wallpaper.wallpaperDir
+                        ? "Loading wallpapers..."
+                        : "No images found in\n" + wallpaper.wallpaperDir
                     horizontalAlignment: Text.AlignHCenter
                     font.family: wallpaper.font
                     font.pixelSize: wallpaper.fsize

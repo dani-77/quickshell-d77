@@ -3,22 +3,22 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Singleton global: expõe o caminho do wallpaper atualmente ativo, lido
-// do mesmo ficheiro escrito por Wallpaper.qml (persistProc/_persist) e
-// por apply-saved-wallpaper.sh no arranque do Hyprland.
+// Global singleton: exposes the currently active wallpaper path, read
+// from the same file written by Wallpaper.qml (persistProc/_persist) and
+// by apply-saved-wallpaper.sh at Hyprland startup.
 //
-// Uso noutros ficheiros QML (import relativo, sem alias qs.*):
+// Usage in other QML files (relative import, no qs.* alias):
 //   import "../Services" as Services
 //   Services.WallpaperState.hasWallpaper
 //
-// Não escreve o ficheiro no caminho normal (isso já é feito pelo
-// Wallpaper.qml); só reage a mudanças externas via FileView.watchChanges.
+// Does not write to the file normally (that is already done by
+// Wallpaper.qml); only reacts to external changes via FileView.watchChanges.
 
 Singleton {
     id: root
 
-    // Tem de bater certo com stateFile em wallpaper/Wallpaper.qml e
-    // STATE_FILE em wallpaper/apply-saved-wallpaper.sh.
+    // Must match stateFile in wallpaper/Wallpaper.qml and
+    // STATE_FILE in wallpaper/apply-saved-wallpaper.sh.
     readonly property string statePath: Quickshell.env("HOME") + "/.cache/quickshell/wallpaper/current"
 
     property string currentPath: ""
