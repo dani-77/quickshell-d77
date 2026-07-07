@@ -306,7 +306,7 @@ PanelWindow {
                 }
 
                 Text {
-                    text: wallpaper.images.length + " imagens"
+                    text: wallpaper.images.length + " wallpapers"
                     font.family: wallpaper.font
                     font.pixelSize: wallpaper.fsize - 1
                     color: wallpaper.colMuted
