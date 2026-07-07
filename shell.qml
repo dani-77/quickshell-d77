@@ -25,7 +25,24 @@ import "dashboard"
 // Exposes Wallpaper
 import "wallpaper"
 
+// Backdrop module (backdrop dir).
+// Exposes Backdrop e WallpaperBackground (fundo decorativo mostrado
+// só enquanto não houver wallpaper definido).
+import "backdrop"
+
 ShellRoot {
+
+    // ══════════════════════════════════════════════════════
+    // BACKDROP (fundo decorativo condicional)
+    // ══════════════════════════════════════════════════════
+    // Uma instância por ecrã, na camada Bottom do layer-shell (acima do
+    // hyprpaper, que desenha na camada Background). Só é visível enquanto
+    // Services.WallpaperState.hasWallpaper for false.
+    WallpaperBackground {
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colPurple: g.colPurple
+    }
 
     // ══════════════════════════════════════════════════════
     // LAUNCHER
@@ -244,6 +261,7 @@ ShellRoot {
     //   qs ipc call wallpaper reload
     //   qs ipc call wallpaper set /caminho/para/imagem.png
     //   qs ipc call wallpaper random
+    //   qs ipc call wallpaper clear
     //
     // Exemplo de bind no hyprland.conf:
     //   bind = SUPER, W, exec, qs ipc call wallpaper toggle
@@ -263,6 +281,10 @@ ShellRoot {
         function set(path: string): void { wallpaperPicker.apply(path) }
         // Aplica um wallpaper aleatório da lista já carregada.
         function random(): void { wallpaperPicker.applyRandom() }
+        // Remove o wallpaper ativo: descarrega do hyprpaper e apaga o
+        // ficheiro de estado. O backdrop (fundo decorativo) aparece
+        // automaticamente enquanto não houver wallpaper.
+        function clear(): void { wallpaperPicker.clear() }
     }
 
     // ── Global Hyprland keybinds (fallback) ───────────────

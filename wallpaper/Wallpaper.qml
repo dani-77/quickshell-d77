@@ -82,6 +82,16 @@ PanelWindow {
         monitorDetect.running = true
     }
 
+    // Removes the active wallpaper: unloads it from hyprpaper (so nothing
+    // is drawn on the Background layer) and clears stateFile, so
+    // Services.WallpaperState.hasWallpaper flips to false and the
+    // backdrop (WallpaperBackground) becomes visible again.
+    function clear() {
+        currentWallpaper = ""
+        lastError = ""
+        clearProc.running = true
+    }
+
     // Saves the chosen path so it survives logout/reboot. mkdir -p ensures
     // the cache dir exists on first run.
     function _persist(path) {
@@ -192,6 +202,21 @@ PanelWindow {
         }
     }
 
+    // Unloads all wallpapers from hyprpaper (nothing left drawn on the
+    // Background layer) and removes stateFile, so the saved wallpaper
+    // isn't reapplied by apply-saved-wallpaper.sh on the next login.
+    Process {
+        id: clearProc
+        command: ["sh", "-c",
+            "hyprctl hyprpaper unload all >/dev/null 2>&1; rm -f '" + wallpaper.stateFile + "'"
+        ]
+        running: false
+        onExited: function(code) {
+            if (code !== 0)
+                wallpaper.lastError = "clear falhou (código " + code + ")"
+        }
+    }
+
     // Detects the currently focused monitor name when wallpaper.monitor
     // is left empty, so we always pass a concrete monitor to hyprpaper
     // (some hyprpaper versions reject an empty monitor field).
@@ -285,6 +310,45 @@ PanelWindow {
                     font.family: wallpaper.font
                     font.pixelSize: wallpaper.fsize - 1
                     color: wallpaper.colMuted
+                }
+
+                // Reset wallpaper: volta ao backdrop decorativo (Backdrop.qml).
+                Rectangle {
+                    id: resetBtn
+                    Layout.leftMargin: 4
+                    implicitWidth:  resetRow.implicitWidth  + 16
+                    implicitHeight: resetRow.implicitHeight + 8
+                    radius: 6
+                    color: resetMa.containsMouse ? Qt.rgba(0.94, 0.3, 0.3, 0.18) : "transparent"
+                    border.width: 1
+                    border.color: resetMa.containsMouse ? "#f7768e" : wallpaper.colMuted
+
+                    RowLayout {
+                        id: resetRow
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Text {
+                            text: "󰑓"
+                            font.family: wallpaper.font
+                            font.pixelSize: wallpaper.fsize
+                            color: "#f7768e"
+                        }
+                        Text {
+                            text: "Clear"
+                            font.family: wallpaper.font
+                            font.pixelSize: wallpaper.fsize - 1
+                            color: "#f7768e"
+                        }
+                    }
+
+                    MouseArea {
+                        id: resetMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: wallpaper.clear()
+                    }
                 }
             }
 
