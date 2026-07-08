@@ -566,7 +566,7 @@ ShellRoot {
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                wsProc.command = ["hyprctl", "dispatch", "workspace", wsId.toString()]
+                                wsProc.command = ["hyprctl", "dispatch", "hl.dsp.focus({workspace = " + wsId + "})"]
                                 wsProc.running = true
                             }
                         }
