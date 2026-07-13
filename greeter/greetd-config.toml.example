@@ -1,0 +1,20 @@
+# Example /etc/greetd/config.toml for the quickshell-d77 greeter.
+#
+# Adjust `vt` to whichever VT your system boots to (1 is typical), and
+# make sure the wrapper script below has been deployed and is executable.
+# Four compositor wrappers ship in assets/: pick whichever host compositor
+# you have installed — all four run the exact same greeter UI/logic.
+
+[terminal]
+vt = 1
+
+[default_session]
+user = "greeter"
+# Hyprland host:
+command = "/etc/greetd/quickshell-d77/greet-hyprland.sh"
+# niri host (comment the line above and uncomment this one instead):
+# command = "/etc/greetd/quickshell-d77/greet-niri.sh"
+# Sway host:
+# command = "/etc/greetd/quickshell-d77/greet-sway.sh"
+# mangowc host:
+# command = "/etc/greetd/quickshell-d77/greet-mango.sh"

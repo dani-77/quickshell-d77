@@ -62,6 +62,16 @@ The shell also bundles a native **lockscreen** module (folder `lockscreen/`, ada
 
 Detailed module documentation lives in [`lockscreen/README.md`](lockscreen/README.md).
 
+## Native greeter (login screen)
+
+The shell also bundles a native **greeter** for [greetd](https://github.com/kennylevinsen/greetd) (folder `greeter/`), inspired by [DankMaterialShell's Greetd module](https://github.com/AvengeMedia/DankMaterialShell/tree/master/quickshell/Modules/Greetd) but trimmed down and adapted to quickshell-d77: same Tokyo Night styling as the lockscreen, and the same QML-drawn `Backdrop` background as the rest of the shell instead of a synced wallpaper image.
+
+It scans both `/usr/share/wayland-sessions` and `/usr/share/xsessions` (X11) for available sessions, and launches whichever one is picked through greetd's IPC — X11 sessions are wrapped with `startx` automatically, since greetd doesn't start an Xorg server on its own.
+
+The greeter itself needs a Wayland compositor to run under before any user session exists; wrapper scripts ship for **Hyprland**, **niri**, **Sway**, and **mangowc** (`greeter/assets/greet-{hyprland,niri,sway,mango}.sh`) — pick whichever you have installed. All four have been verified to load the greeter cleanly (nested, no QML warnings).
+
+Unlike the other modules above, the greeter replaces your display manager and needs system-level setup (a `greeter` user, `/etc/greetd/config.toml`, disabling gdm/sddm/lightdm). See [`greeter/README.md`](greeter/README.md) for the full installation steps.
+
 ## Native OSD (volume & brightness)
 
 The shell also bundles a native **OSD** module (folder `osd/`, adapted from [quickshell-examples → volume-osd](https://github.com/quickshell-mirror/quickshell-examples/tree/master/volume-osd)). A minimalist overlay (icon + progress bar + value) pops up in the **top-right corner** whenever the volume or screen brightness changes, and fades out after ~2.5 s.
