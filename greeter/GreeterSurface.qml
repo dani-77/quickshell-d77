@@ -207,6 +207,11 @@ Rectangle {
                         onTextChanged: GreeterState.password = text
                         onAccepted: root.loginRequested()
 
+                        Keys.onTabPressed: {
+                            event.accepted = true;
+                            sessionButton.forceActiveFocus();
+                        }
+
                         // Editing a TextInput breaks its declarative `text:`
                         // binding (Qt writes `text` imperatively on every
                         // keystroke), so GreeterState.password getting
@@ -239,9 +244,20 @@ Rectangle {
                 implicitHeight: 44
                 radius: 10
                 color: sessionMa.containsMouse ? Qt.darker(root.colBg, 1.05) : Qt.darker(root.colBg, 1.15)
-                border.color: root.sessionMenuOpen ? root.colPurple : root.colMuted
+                border.color: (root.sessionMenuOpen || sessionButton.activeFocus) ? root.colPurple : root.colMuted
                 border.width: 2
                 enabled: root.isPrimaryScreen && !GreeterState.unlocking
+
+                Keys.onUpPressed: {
+                    if (GreeterState.sessionList.length > 0)
+                        GreeterState.currentSessionIndex = (GreeterState.currentSessionIndex - 1 + GreeterState.sessionList.length) % GreeterState.sessionList.length;
+                }
+                Keys.onDownPressed: {
+                    if (GreeterState.sessionList.length > 0)
+                        GreeterState.currentSessionIndex = (GreeterState.currentSessionIndex + 1) % GreeterState.sessionList.length;
+                }
+                Keys.onReturnPressed: root.loginRequested()
+                Keys.onEnterPressed: root.loginRequested()
 
                 RowLayout {
                     anchors.fill: parent

@@ -96,6 +96,13 @@ Scope {
     function _addSession(path, name, exec, type) {
         if (!name || !exec || GreeterState.sessionList.includes(name))
             return;
+        // dwl only hosts this greeter itself (see assets/greet-dwl.sh) — its
+        // own .desktop entry, if installed, isn't something to log into.
+        // Exec= is often wrapped (e.g. "dbus-launch dwl"), so check every
+        // token rather than just the first.
+        const execTokens = exec.trim().split(/\s+/).map(t => t.split("/").pop().toLowerCase());
+        if (name.trim().toLowerCase() === "dwl" || execTokens.includes("dwl"))
+            return;
         GreeterState.sessionList = GreeterState.sessionList.concat([name]);
         GreeterState.sessionExecs = GreeterState.sessionExecs.concat([exec]);
         GreeterState.sessionPaths = GreeterState.sessionPaths.concat([path]);
