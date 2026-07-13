@@ -475,47 +475,69 @@ ShellRoot {
     function _sessionCmd(action) {
         return ["sh", "-c", "loginctl " + action + " 2>&1 || systemctl " + action + " 2>&1"]
     }
-    function _onSessionExited(label) {
-        return function(code) {
-            if (code !== 0)
-                g.sessionError = label + " failed — no systemd-logind/elogind reachable?"
-        }
+    // Builds the error banner text from whatever the command printed (e.g.
+    // "Failed to issue method call: Caller does not belong to any known
+    // session."), falling back to a generic hint if it printed nothing.
+    function _sessionFailMsg(label, output) {
+        var out = output.trim()
+        return label + " failed" + (out !== "" ? ": " + out : " — no systemd-logind/elogind reachable?")
     }
 
     Process {
         id: suspendProc
         command: _sessionCmd("suspend")
         running: false
-        onExited: _onSessionExited("Suspend")
+        property string _out: ""
+        stdout: SplitParser { onRead: line => suspendProc._out += line + " " }
+        onExited: function(code) {
+            if (code !== 0) g.sessionError = _sessionFailMsg("Suspend", suspendProc._out)
+            suspendProc._out = ""
+        }
     }
     Process {
         id: rebootProc
         command: _sessionCmd("reboot")
         running: false
-        onExited: _onSessionExited("Reboot")
+        property string _out: ""
+        stdout: SplitParser { onRead: line => rebootProc._out += line + " " }
+        onExited: function(code) {
+            if (code !== 0) g.sessionError = _sessionFailMsg("Reboot", rebootProc._out)
+            rebootProc._out = ""
+        }
     }
     Process {
         id: shutdownProc
         command: _sessionCmd("poweroff")
         running: false
-        onExited: _onSessionExited("Poweroff")
+        property string _out: ""
+        stdout: SplitParser { onRead: line => shutdownProc._out += line + " " }
+        onExited: function(code) {
+            if (code !== 0) g.sessionError = _sessionFailMsg("Poweroff", shutdownProc._out)
+            shutdownProc._out = ""
+        }
     }
     Process {
         id: logoutProc
+        property string _out: ""
         command: {
             if (compositor === "hyprland") return ["hyprctl", "dispatch", "hl.dsp.exit()"];
             if (compositor === "sway") return ["swaymsg", "exit"];
-            // No systemctl equivalent for "terminate my own session", so
-            // no fallback here — loginctl (systemd-logind or elogind) is
-            // the only tool for this.
-            return ["loginctl", "terminate-session", "self"];
+            // "self" resolves the caller's session by looking up its PID's
+            // cgroup, which fails with "Caller does not belong to any
+            // known session" when the compositor runs as a systemd --user
+            // service (e.g. niri-session, or Hyprland under UWSM) — the
+            // caller then lives under user@<uid>.service rather than the
+            // login session-N.scope, so logind can't map it back. Session
+            // managers that do this import $XDG_SESSION_ID into the
+            // environment specifically to work around it, so prefer that
+            // and only fall back to "self" if it's unset.
+            return ["sh", "-c", "loginctl terminate-session \"${XDG_SESSION_ID:-self}\" 2>&1"];
         }
         running: false
+        stdout: SplitParser { onRead: line => logoutProc._out += line + " " }
         onExited: function(code) {
-            // Hyprland/Sway dispatchers don't fail the same way loginctl
-            // does, so only surface an error for the generic login1 path.
-            if (code !== 0 && compositor !== "hyprland" && compositor !== "sway")
-                g.sessionError = "Logout failed — no systemd-logind/elogind reachable?"
+            if (code !== 0) g.sessionError = _sessionFailMsg("Logout", logoutProc._out)
+            logoutProc._out = ""
         }
     }
 
@@ -1053,8 +1075,12 @@ ShellRoot {
         // Empty mask → does not block mouse events (matches Osd.qml).
         mask: Region {}
 
-        implicitWidth:  bannerText.implicitWidth  + 40
-        implicitHeight: 40
+        // Real D-Bus/systemd error text can run long (e.g. "Failed to
+        // issue method call: Caller does not belong to any known
+        // session."), so cap the width and wrap instead of stretching
+        // across the screen.
+        implicitWidth:  Math.min(bannerText.implicitWidth + 40, 640)
+        implicitHeight: bannerText.implicitHeight + 24
 
         Rectangle {
             id: banner
@@ -1067,6 +1093,9 @@ ShellRoot {
             Text {
                 id: bannerText
                 anchors.centerIn: parent
+                width: Math.min(implicitWidth, 600)
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
                 text: g.sessionError
                 font { family: g.font; pixelSize: g.fsize }
                 color: g.colRed

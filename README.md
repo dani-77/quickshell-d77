@@ -27,7 +27,7 @@ The shell automatically detects the running Wayland compositor (`Hyprland`, `Swa
 - **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces.
 - **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
 
-The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, or standard login1 session termination (`loginctl terminate-session self`).
+The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, or standard login1 session termination (`loginctl terminate-session`).
 
 ## Session actions (suspend/reboot/poweroff/logout)
 
@@ -35,9 +35,11 @@ Both the **dashboard** and the **session menu** trigger the same underlying proc
 - **systemd-logind** — the default on systemd distros (e.g. **Arch**), or
 - **elogind** — the standalone logind fork used on non-systemd distros with a Wayland desktop (e.g. **Void**).
 
-No compositor- or distro-specific branching is needed for this: as long as one of the two is running (which any Wayland session with `polkit`/seat management typically already requires), `loginctl suspend/reboot/poweroff` and `loginctl terminate-session self` work unmodified. As a second attempt, `systemctl <action>` is also tried for the rare case where `loginctl` isn't on `PATH` but systemd is.
+No compositor- or distro-specific branching is needed for this: as long as one of the two is running (which any Wayland session with `polkit`/seat management typically already requires), `loginctl suspend/reboot/poweroff` work unmodified. As a second attempt, `systemctl <action>` is also tried for the rare case where `loginctl` isn't on `PATH` but systemd is.
 
-If neither succeeds — no login1 provider is reachable on D-Bus — the failure isn't silent: a small red toast appears at the top of the screen for a few seconds with the combined error output, instead of the button silently doing nothing.
+**Logout and `$XDG_SESSION_ID`**: for logout specifically (compositors with no native exit dispatcher, i.e. not Hyprland/Sway), `loginctl terminate-session` targets `$XDG_SESSION_ID` if it's set in the environment, falling back to the `self` magic session ID otherwise. This matters because `self` resolves the caller's session by looking up its PID's cgroup, which fails with `Failed to issue method call: Caller does not belong to any known session.` when the compositor runs as a **systemd `--user` service** — e.g. `niri-session` (niri's own systemd/dinit session wrapper), or Hyprland launched via **UWSM**. In that setup the shell's process lives under `user@<uid>.service` rather than the login `session-N.scope`, so logind can't map "self" back to a session — but these same session managers import `$XDG_SESSION_ID` into the environment specifically so tools like this can target the session explicitly instead.
+
+If nothing succeeds, the failure isn't silent: a small red toast appears at the top of the screen for a few seconds with the actual command output (e.g. the `Caller does not belong to...` message above), instead of the button silently doing nothing.
 
 ## Native application launcher
 
