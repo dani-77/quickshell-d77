@@ -338,6 +338,11 @@ ShellRoot {
         property var lastCpuTotal: 0
 
         property bool sessionOpen: false
+
+        // Set whenever a session action (suspend/reboot/poweroff/logout)
+        // fails — e.g. no login1 provider (systemd-logind/elogind) reachable
+        // on D-Bus. Cleared automatically by sessionErrorTimer.
+        property string sessionError: ""
     }
 
     // ══════════════════════════════════════════════════════
@@ -458,18 +463,73 @@ ShellRoot {
         command: ["sh", "-c", dashboard.nmtuiLaunchCommand()]
     }
 
-    // Session processes (triggered from the session menu).
-    Process { id: suspendProc;  command: ["loginctl", "suspend"];   running: false }
-    Process { id: rebootProc;   command: ["loginctl", "reboot"];    running: false }
-    Process { id: shutdownProc; command: ["loginctl", "poweroff"];  running: false }
+    // Session processes (triggered from the dashboard and the session menu).
+    // All go through the freedesktop login1 D-Bus interface via `loginctl`,
+    // which is implemented both by systemd-logind (e.g. Arch) and by
+    // elogind (e.g. Void with a Wayland desktop) — so the same command
+    // works unmodified on either. `systemctl` is tried as a second attempt
+    // only for the rare case where loginctl itself isn't on PATH but
+    // systemd is; if both fail, the combined stderr is surfaced via
+    // g.sessionError (see sessionErrorBanner below) instead of silently
+    // doing nothing.
+    function _sessionCmd(action) {
+        return ["sh", "-c", "loginctl " + action + " 2>&1 || systemctl " + action + " 2>&1"]
+    }
+    function _onSessionExited(label) {
+        return function(code) {
+            if (code !== 0)
+                g.sessionError = label + " failed — no systemd-logind/elogind reachable?"
+        }
+    }
+
+    Process {
+        id: suspendProc
+        command: _sessionCmd("suspend")
+        running: false
+        onExited: _onSessionExited("Suspend")
+    }
+    Process {
+        id: rebootProc
+        command: _sessionCmd("reboot")
+        running: false
+        onExited: _onSessionExited("Reboot")
+    }
+    Process {
+        id: shutdownProc
+        command: _sessionCmd("poweroff")
+        running: false
+        onExited: _onSessionExited("Poweroff")
+    }
     Process {
         id: logoutProc
         command: {
             if (compositor === "hyprland") return ["hyprctl", "dispatch", "hl.dsp.exit()"];
             if (compositor === "sway") return ["swaymsg", "exit"];
+            // No systemctl equivalent for "terminate my own session", so
+            // no fallback here — loginctl (systemd-logind or elogind) is
+            // the only tool for this.
             return ["loginctl", "terminate-session", "self"];
         }
         running: false
+        onExited: function(code) {
+            // Hyprland/Sway dispatchers don't fail the same way loginctl
+            // does, so only surface an error for the generic login1 path.
+            if (code !== 0 && compositor !== "hyprland" && compositor !== "sway")
+                g.sessionError = "Logout failed — no systemd-logind/elogind reachable?"
+        }
+    }
+
+    Timer {
+        id: sessionErrorTimer
+        interval: 5000
+        onTriggered: g.sessionError = ""
+    }
+    Connections {
+        target: g
+        function onSessionErrorChanged() {
+            if (g.sessionError !== "")
+                sessionErrorTimer.restart()
+        }
     }
 
     // Periodically refresh all the polled system stats.
@@ -966,6 +1026,50 @@ ShellRoot {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // SESSION ERROR BANNER
+    // Small auto-hiding toast for when a session action (suspend/
+    // reboot/poweroff/logout) fails — e.g. no systemd-logind/elogind on
+    // D-Bus. Independent of sessionPopup, which is already closed by the
+    // time a Process can fail.
+    // ══════════════════════════════════════════════════════
+    PanelWindow {
+        id: sessionErrorBanner
+        visible: g.sessionError !== ""
+        color: "transparent"
+
+        anchors.top: true
+        margins.top: 50
+
+        WlrLayershell.layer:         WlrLayer.Overlay
+        WlrLayershell.namespace:     "quickshell-session-error"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        exclusiveZone: 0
+
+        // Empty mask → does not block mouse events (matches Osd.qml).
+        mask: Region {}
+
+        implicitWidth:  bannerText.implicitWidth  + 40
+        implicitHeight: 40
+
+        Rectangle {
+            id: banner
+            anchors.fill: parent
+            radius: 8
+            color: Qt.darker(g.colBg, 1.2)
+            border.color: g.colRed
+            border.width: 2
+
+            Text {
+                id: bannerText
+                anchors.centerIn: parent
+                text: g.sessionError
+                font { family: g.font; pixelSize: g.fsize }
+                color: g.colRed
             }
         }
     }

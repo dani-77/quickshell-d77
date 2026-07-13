@@ -27,7 +27,17 @@ The shell automatically detects the running Wayland compositor (`Hyprland`, `Swa
 - **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces.
 - **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
 
-The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, or standard systemd session termination (`loginctl terminate-session self`).
+The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, or standard login1 session termination (`loginctl terminate-session self`).
+
+## Session actions (suspend/reboot/poweroff/logout)
+
+Both the **dashboard** and the **session menu** trigger the same underlying processes for suspend, reboot, poweroff and logout. These go through the freedesktop **login1** D-Bus interface via `loginctl`, which works identically whether it's backed by:
+- **systemd-logind** — the default on systemd distros (e.g. **Arch**), or
+- **elogind** — the standalone logind fork used on non-systemd distros with a Wayland desktop (e.g. **Void**).
+
+No compositor- or distro-specific branching is needed for this: as long as one of the two is running (which any Wayland session with `polkit`/seat management typically already requires), `loginctl suspend/reboot/poweroff` and `loginctl terminate-session self` work unmodified. As a second attempt, `systemctl <action>` is also tried for the rare case where `loginctl` isn't on `PATH` but systemd is.
+
+If neither succeeds — no login1 provider is reachable on D-Bus — the failure isn't silent: a small red toast appears at the top of the screen for a few seconds with the combined error output, instead of the button silently doing nothing.
 
 ## Native application launcher
 
