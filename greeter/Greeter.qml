@@ -13,6 +13,7 @@
 // (compositor binaries) are exec'd as-is.
 // ══════════════════════════════════════════════════════
 import QtQuick
+import QtQml.Models
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
@@ -162,7 +163,11 @@ Scope {
         }
     }
 
-    Repeater {
+    // Instantiator (not Repeater): root is a Scope, not an Item, and
+    // QtQuick's Repeater silently creates zero delegates when its parent
+    // isn't an Item — the session scan would never run and the session
+    // list would stay empty regardless of which compositor hosts it.
+    Instantiator {
         model: root.sessionDirs
 
         Item {
