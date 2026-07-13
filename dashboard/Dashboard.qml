@@ -468,19 +468,19 @@ PanelWindow {
                         RowLayout {
                             spacing: 2
                             Text {
-                                text: ""
+                                text: "󰒮"
                                 font.family: dash.font; font.pixelSize: 18
                                 color: dash.colFg
                                 MouseArea { anchors.fill: parent; onClicked: cmusPrevProc.running = true }
                             }
                             Text {
-                                text: dash.cmusStatus === "playing" ? "" : ""
+                                text: dash.cmusStatus === "playing" ? "󰏤" : "󰐊"
                                 font.family: dash.font; font.pixelSize: 18
                                 color: dash.colFg
                                 MouseArea { anchors.fill: parent; onClicked: cmusToggleProc.running = true }
                             }
                             Text {
-                                text: ""
+                                text: "󰒭"
                                 font.family: dash.font; font.pixelSize: 18
                                 color: dash.colFg
                                 MouseArea { anchors.fill: parent; onClicked: cmusNextProc.running = true }
