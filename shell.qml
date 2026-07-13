@@ -39,6 +39,7 @@ ShellRoot {
     readonly property string compositor: {
         if (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== null) return "hyprland";
         if (Quickshell.env("SWAYSOCK") !== null) return "sway";
+        if (Quickshell.env("NIRI_SOCKET") !== null) return "niri";
         return "generic";
     }
 
@@ -522,12 +523,21 @@ ShellRoot {
         command: {
             if (compositor === "hyprland") return ["hyprctl", "dispatch", "hl.dsp.exit()"];
             if (compositor === "sway") return ["swaymsg", "exit"];
+            // niri-session runs niri as a systemd --user service and waits
+            // on it; killing the login1 session from the outside (loginctl
+            // terminate-session) detaches the display but leaves
+            // niri.service marked active, so the *next* login's
+            // niri-session refuses to start ("niri session is already
+            // running") — a known niri issue (niri-wm/niri#2729). Quitting
+            // niri natively lets its own service wrapper notice the exit
+            // and clean up niri.service correctly, so prefer that here.
+            if (compositor === "niri") return ["niri", "msg", "action", "quit", "--skip-confirmation"];
             // "self" resolves the caller's session by looking up its PID's
             // cgroup, which fails with "Caller does not belong to any
             // known session" when the compositor runs as a systemd --user
-            // service (e.g. niri-session, or Hyprland under UWSM) — the
-            // caller then lives under user@<uid>.service rather than the
-            // login session-N.scope, so logind can't map it back. Session
+            // service (e.g. Hyprland under UWSM) — the caller then lives
+            // under user@<uid>.service rather than the login
+            // session-N.scope, so logind can't map it back. Session
             // managers that do this import $XDG_SESSION_ID into the
             // environment specifically to work around it, so prefer that
             // and only fall back to "self" if it's unset.

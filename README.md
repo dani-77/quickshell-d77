@@ -1,6 +1,6 @@
 # quickshell-d77
 
-d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic across Wayland compositors, with native integrations for both Hyprland and Sway.
+d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic across Wayland compositors, with native integrations for Hyprland, Sway, and niri.
 
 > **Note on i3**: every surface in this shell (bar, launcher, dashboard, lockscreen, wallpaper picker) is a Wayland layer-shell client (`PanelWindow`/`WlrLayershell`, `WlSessionLock`). i3 is an X11-only window manager with no Wayland compositor, so it cannot host any of these windows — there is no i3 support, and there cannot be one without rewriting the shell's window layer for X11.
 
@@ -22,12 +22,13 @@ qs -p ~/.config/quickshell/shell.qml
 
 ## Compositor-Agnostic & Workspaces
 
-The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, or others) at startup:
+The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, `niri`, or others) at startup:
 - **Hyprland**: Dynamically loads a workspace widget reading `Hyprland.workspaces` and using `hyprctl` for workspace switching.
 - **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces.
+- **niri**: detected via `$NIRI_SOCKET`, used for a native logout (see below). No workspace widget yet — niri's workspace model doesn't map onto the fixed 1-9 grid the other two use.
 - **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
 
-The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, or standard login1 session termination (`loginctl terminate-session`).
+The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, `niri msg action quit --skip-confirmation`, or standard login1 session termination (`loginctl terminate-session`) as a last resort.
 
 ## Session actions (suspend/reboot/poweroff/logout)
 
@@ -37,7 +38,9 @@ Both the **dashboard** and the **session menu** trigger the same underlying proc
 
 No compositor- or distro-specific branching is needed for this: as long as one of the two is running (which any Wayland session with `polkit`/seat management typically already requires), `loginctl suspend/reboot/poweroff` work unmodified. As a second attempt, `systemctl <action>` is also tried for the rare case where `loginctl` isn't on `PATH` but systemd is.
 
-**Logout and `$XDG_SESSION_ID`**: for logout specifically (compositors with no native exit dispatcher, i.e. not Hyprland/Sway), `loginctl terminate-session` targets `$XDG_SESSION_ID` if it's set in the environment, falling back to the `self` magic session ID otherwise. This matters because `self` resolves the caller's session by looking up its PID's cgroup, which fails with `Failed to issue method call: Caller does not belong to any known session.` when the compositor runs as a **systemd `--user` service** — e.g. `niri-session` (niri's own systemd/dinit session wrapper), or Hyprland launched via **UWSM**. In that setup the shell's process lives under `user@<uid>.service` rather than the login `session-N.scope`, so logind can't map "self" back to a session — but these same session managers import `$XDG_SESSION_ID` into the environment specifically so tools like this can target the session explicitly instead.
+**Why niri gets a native logout instead of going through loginctl**: `niri-session` runs niri as a **systemd `--user` service** and waits on it. Killing the login1 session from the outside (`loginctl terminate-session`) detaches the display but leaves `niri.service` marked active, so the *next* login's `niri-session` refuses to start ("niri session is already running") — a [known niri issue](https://github.com/niri-wm/niri/discussions/2729). Quitting niri natively via IPC lets its own service wrapper notice the exit and clean up `niri.service` correctly, so the shell does that instead of touching logind at all for niri.
+
+**Logout and `$XDG_SESSION_ID`** (the true generic case — no native exit dispatcher, e.g. river, wayfire, labwc): `loginctl terminate-session` targets `$XDG_SESSION_ID` if it's set in the environment, falling back to the `self` magic session ID otherwise. This matters because `self` resolves the caller's session by looking up its PID's cgroup, which fails with `Failed to issue method call: Caller does not belong to any known session.` when the compositor runs as a systemd `--user` service — e.g. Hyprland launched via **UWSM**. In that setup the shell's process lives under `user@<uid>.service` rather than the login `session-N.scope`, so logind can't map "self" back to a session — but these session managers import `$XDG_SESSION_ID` into the environment specifically so tools like this can target the session explicitly instead.
 
 If nothing succeeds, the failure isn't silent: a small red toast appears at the top of the screen for a few seconds with the actual command output (e.g. the `Caller does not belong to...` message above), instead of the button silently doing nothing.
 
