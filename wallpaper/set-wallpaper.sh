@@ -8,8 +8,6 @@ detect_compositor() {
         echo "hyprland"
     elif [ -n "$SWAYSOCK" ]; then
         echo "sway"
-    elif [ -n "$I3SOCK" ]; then
-        echo "i3"
     else
         echo "generic"
     fi

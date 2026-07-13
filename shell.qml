@@ -30,10 +30,15 @@ import "wallpaper"
 import "backdrop"
 
 ShellRoot {
+    // Note: i3 is deliberately not detected here. Every window in this shell
+    // (bar, launcher, dashboard, lockscreen, wallpaper picker) is a Wayland
+    // layer-shell surface (PanelWindow/WlrLayershell, WlSessionLock), which
+    // requires a Wayland compositor implementing zwlr_layer_shell_v1. i3 is
+    // an X11-only window manager, so none of these surfaces can render
+    // under it regardless of detection — there is no "i3 support" to add.
     readonly property string compositor: {
         if (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== null) return "hyprland";
         if (Quickshell.env("SWAYSOCK") !== null) return "sway";
-        if (Quickshell.env("I3SOCK") !== null) return "i3";
         return "generic";
     }
 
@@ -462,7 +467,6 @@ ShellRoot {
         command: {
             if (compositor === "hyprland") return ["hyprctl", "dispatch", "hl.dsp.exit()"];
             if (compositor === "sway") return ["swaymsg", "exit"];
-            if (compositor === "i3") return ["i3-msg", "exit"];
             return ["loginctl", "terminate-session", "self"];
         }
         running: false
@@ -540,7 +544,7 @@ ShellRoot {
                     id: workspacesLoader
                     source: {
                         if (compositor === "hyprland") return "workspaces/WorkspacesHyprland.qml";
-                        if (compositor === "sway" || compositor === "i3") return "workspaces/WorkspacesSway.qml";
+                        if (compositor === "sway") return "workspaces/WorkspacesSway.qml";
                         return "";
                     }
                     onLoaded: {

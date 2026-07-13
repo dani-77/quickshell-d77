@@ -2,7 +2,7 @@
 // Wallpaper.qml
 // Grid-style wallpaper picker (DankMaterialShell-like).
 // Scans a local directory for images and applies the
-// selection through hyprpaper's IPC (hyprctl).
+// selection through set-wallpaper.sh (compositor-agnostic).
 // ══════════════════════════════════════════════════════
 import QtQuick
 import QtQuick.Layouts
@@ -36,8 +36,10 @@ PanelWindow {
     property var extensions: ["png", "jpg", "jpeg", "webp", "bmp"]
 
     // Where the last chosen wallpaper is persisted across logout/reboot.
-    // Read at Hyprland startup by a small script (see apply-saved-wallpaper.sh).
-    property string stateFile: "/home/dani77/.cache/quickshell/wallpaper/current"
+    // Must match STATE_FILE in set-wallpaper.sh — both read/write the same
+    // path. Restored at login by apply-saved-wallpaper.sh (Hyprland) or
+    // `set-wallpaper.sh startup` (Sway/generic, see README).
+    property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell/wallpaper/current"
 
     // ══════════════════════════════════════════════════════
     // STATE
@@ -153,14 +155,9 @@ PanelWindow {
         }
     }
 
-    // Persists the chosen wallpaper path to stateFile.
-    Process {
-        id: persistProc
-        running: false
-    }
-
-    // Applies the wallpaper directly via hyprctl (hyprpaper 0.8.x handles
-    // preloading internally on this call).
+    // Applies the wallpaper by delegating to set-wallpaper.sh, which also
+    // persists the path to stateFile and picks the right backend for the
+    // detected compositor (see set-wallpaper.sh).
     Process {
         id: wallpaperProc
         running: false
@@ -188,14 +185,6 @@ PanelWindow {
             if (code !== 0)
                 wallpaper.lastError = "clear failed (code " + code + ")"
         }
-    }
-
-    // Detects the currently focused monitor name when wallpaper.monitor
-    // is left empty, so we always pass a concrete monitor to hyprpaper
-    // (some hyprpaper versions reject an empty monitor field).
-    Process {
-        id: monitorDetect
-        running: false
     }
 
     // ══════════════════════════════════════════════════════

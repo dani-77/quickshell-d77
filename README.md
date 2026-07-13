@@ -1,6 +1,8 @@
 # quickshell-d77
 
-d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic, with native integrations for both Hyprland and Sway/i3.
+d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic across Wayland compositors, with native integrations for both Hyprland and Sway.
+
+> **Note on i3**: every surface in this shell (bar, launcher, dashboard, lockscreen, wallpaper picker) is a Wayland layer-shell client (`PanelWindow`/`WlrLayershell`, `WlSessionLock`). i3 is an X11-only window manager with no Wayland compositor, so it cannot host any of these windows — there is no i3 support, and there cannot be one without rewriting the shell's window layer for X11.
 
 ![sample](sample.png)
 
@@ -20,12 +22,12 @@ qs -p ~/.config/quickshell/shell.qml
 
 ## Compositor-Agnostic & Workspaces
 
-The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, `i3`, or others) at startup:
+The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, or others) at startup:
 - **Hyprland**: Dynamically loads a workspace widget reading `Hyprland.workspaces` and using `hyprctl` for workspace switching.
-- **Sway / i3**: Dynamically loads a workspace widget reading `I3.workspaces` and using `swaymsg` / `i3-msg` to switch workspaces.
+- **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces.
 - **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
 
-The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit` / `i3-msg exit`, or standard systemd session termination (`loginctl terminate-session self`).
+The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, or standard systemd session termination (`loginctl terminate-session self`).
 
 ## Native application launcher
 
@@ -65,6 +67,15 @@ The shell features a built-in Wallpaper selector written in QML. Under the hood,
 
 It is automatically triggered from the wallpaper menu or via IPC.
 
+**Restoring the wallpaper at login** works differently per compositor, since only Hyprland's hyprpaper supports a config-file preload step:
+- **Hyprland**: `apply-saved-wallpaper.sh` rewrites `hyprpaper.conf` *before* hyprpaper starts, so it launches already showing the right wallpaper. Run it from `hyprland.conf` before `exec-once = hyprpaper` (see the script's header for details).
+- **Sway / generic**: there's no preload step, so add `set-wallpaper.sh startup` as an `exec` line in your compositor's config, after the compositor itself has started. It reads the saved path from the state file and reapplies it — a brief default background may flash before this runs.
+
+```text
+# ~/.config/sway/config
+exec ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
+```
+
 ## Hyprland-Only Features
 
 While all shell widgets, the launcher, lockscreen, and OSD are fully compatible across Wayland compositors, some integrations are exclusive to **Hyprland**:
@@ -72,7 +83,7 @@ While all shell widgets, the launcher, lockscreen, and OSD are fully compatible 
 1. **Global Shortcuts Fallback (`GlobalShortcut` in QML)**:
    The native `GlobalShortcut` bindings in QML rely on Hyprland's global shortcuts Wayland protocol. They are disabled on Sway and other compositors. On those compositors, you must configure keybinds in your WM config file (e.g. `~/.config/sway/config`) calling the Quickshell IPC directly.
 2. **Hyprland Workspace Dispatching**:
-   The custom workspace dispatch options using `hyprctl` only apply when running under Hyprland. Sway/i3 use native workspace focusing commands (`swaymsg workspace`).
+   The custom workspace dispatch options using `hyprctl` only apply when running under Hyprland. Sway uses native workspace focusing commands (`swaymsg workspace`).
 
 ---
 
@@ -129,7 +140,7 @@ bindel = , XF86MonBrightnessUp,   exec, qs ipc call osd brightnessUp
 bindel = , XF86MonBrightnessDown, exec, qs ipc call osd brightnessDown
 ```
 
-#### Sway / i3 (`~/.config/sway/config`)
+#### Sway (`~/.config/sway/config`)
 ```text
 bindsym --locked XF86AudioRaiseVolume  exec qs ipc call osd volumeUp
 bindsym --locked XF86AudioLowerVolume  exec qs ipc call osd volumeDown
@@ -150,7 +161,7 @@ bind = SUPER, L, exec, qs ipc call lockscreen lock      # lock the screen
 bind = SUPER, Y, exec, qs ipc call wallpaper toggle     # wallpaper menu
 ```
 
-#### Sway / i3 (`~/.config/sway/config`)
+#### Sway (`~/.config/sway/config`)
 ```text
 bindsym $mod+d exec qs ipc call launcher toggle
 bindsym $mod+Shift+e exec qs ipc call session toggle
@@ -158,7 +169,7 @@ bindsym $mod+l exec qs ipc call lockscreen lock
 bindsym $mod+y exec qs ipc call wallpaper toggle
 ```
 
-> 📖 Full keybind setup — including **Hyprland with Lua** (generating `hyprland.conf`, `init.lua`, `hyprctl keyword`, `source`) and how to verify the IPC targets (`qs ipc show`) — is in [`KEYBINDS.md`](KEYBINDS.md).
+> 📖 Full **Hyprland** keybind setup — including **Hyprland with Lua** (generating `hyprland.conf`, `init.lua`, `hyprctl keyword`, `source`) and how to verify the IPC targets (`qs ipc show`) — is in [`KEYBINDS.md`](KEYBINDS.md). That guide is Hyprland-specific; for Sway, the snippets above are the full picture.
 
 ### Global shortcuts fallback (Hyprland only)
 
