@@ -1,6 +1,6 @@
 # quickshell-d77
 
-d77-shell is a simple QT desktop shell built on top of Quickshell for Hyprland.
+d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic, with native integrations for both Hyprland and Sway/i3.
 
 ![sample](sample.png)
 
@@ -18,57 +18,67 @@ git clone https://github.com/dani-77/quickshell-d77.git ~/.config/quickshell
 qs -p ~/.config/quickshell/shell.qml
 ```
 
+## Compositor-Agnostic & Workspaces
+
+The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, `i3`, or others) at startup:
+- **Hyprland**: Dynamically loads a workspace widget reading `Hyprland.workspaces` and using `hyprctl` for workspace switching.
+- **Sway / i3**: Dynamically loads a workspace widget reading `I3.workspaces` and using `swaymsg` / `i3-msg` to switch workspaces.
+- **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
+
+The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit` / `i3-msg exit`, or standard systemd session termination (`loginctl terminate-session self`).
+
 ## Native application launcher
 
-The shell ships with a built-in application launcher (Rofi/Fuzzel style),
-written entirely in QML — no external dependencies. It is already wired into
-`shell.qml`:
+The shell ships with a built-in application launcher (Rofi/Fuzzel style), written entirely in QML — no external dependencies. It is already wired into `shell.qml`:
 
 - Click the purple launcher button on the left of the bar, **or**
-- Trigger it from a Hyprland keybind via IPC (see below).
+- Trigger it via a window manager keybind calling the IPC (see below).
 
 Detailed module documentation lives in [`launcher/README.md`](launcher/README.md).
 
 ## Native lockscreen
 
-The shell also bundles a native **lockscreen** module (folder `lockscreen/`, adapted
-from [quickshell-examples](https://github.com/quickshell-mirror/quickshell-examples)),
-written entirely in QML and themed to match the rest of the shell (Tokyo Night). It
-uses a real `WlSessionLock` and validates the password through **PAM**, so the screen
-stays genuinely locked until a valid password is typed.
+The shell also bundles a native **lockscreen** module (folder `lockscreen/`, adapted from [quickshell-examples](https://github.com/quickshell-mirror/quickshell-examples)), written entirely in QML and themed to match the rest of the shell (Tokyo Night). It uses a real `WlSessionLock` and validates the password through **PAM**, so the screen stays genuinely locked until a valid password is typed.
 
 - Lock it from the **session menu** (the "Lock" entry), **or**
-- Trigger it from a Hyprland keybind via IPC (see below, suggested `SUPER + L`).
+- Trigger it via a window manager keybind calling the IPC (see below, suggested `SUPER + L`).
 
 Detailed module documentation lives in [`lockscreen/README.md`](lockscreen/README.md).
 
 ## Native OSD (volume & brightness)
 
-The shell also bundles a native **OSD** module (folder `osd/`, adapted from
-[quickshell-examples → volume-osd](https://github.com/quickshell-mirror/quickshell-examples/tree/master/volume-osd)).
-A minimalist overlay (icon + progress bar + value) pops up in the **top-right corner**
-whenever the volume or screen brightness changes, and fades out after ~2.5 s.
+The shell also bundles a native **OSD** module (folder `osd/`, adapted from [quickshell-examples → volume-osd](https://github.com/quickshell-mirror/quickshell-examples/tree/master/volume-osd)). A minimalist overlay (icon + progress bar + value) pops up in the **top-right corner** whenever the volume or screen brightness changes, and fades out after ~2.5 s.
 
 - **Volume** uses the **ALSA** backend (`amixer`) with **mute/unmute** support.
 - **Brightness** uses **brightnessctl**.
 
-Trigger it from your media keys via IPC (see below). A background watcher also catches
-*external* changes (e.g. another app changing the volume) and shows the OSD anyway.
+Trigger it from your media keys via IPC (see below). A background watcher also catches *external* changes (e.g. another app changing the volume) and shows the OSD anyway.
 
 Detailed module documentation lives in [`osd/README.md`](osd/README.md).
 
-## Semi Native Wallpaper chooser
+## Compositor-Agnostic Wallpaper Chooser
 
-The shell ships with a built-in Wallpaper selector depending on Hyprpaper,
-written entirely in QML. It is already wired into `shell.qml`:
+The shell features a built-in Wallpaper selector written in QML. Under the hood, it delegates all tasks to a helper script `set-wallpaper.sh`, making it fully compositor-agnostic:
+- **Hyprland**: Applies wallpapers via `hyprctl hyprpaper` (with automated preloading).
+- **Sway**: Applies wallpapers natively via `swaymsg output`.
+- **Other Compositors**: Automatically falls back to popular tools like `swww`, `swaybg`, or `feh` depending on which ones are installed.
 
-- Trigger it from a Hyprland keybind via IPC (see below).
+It is automatically triggered from the wallpaper menu or via IPC.
+
+## Hyprland-Only Features
+
+While all shell widgets, the launcher, lockscreen, and OSD are fully compatible across Wayland compositors, some integrations are exclusive to **Hyprland**:
+
+1. **Global Shortcuts Fallback (`GlobalShortcut` in QML)**:
+   The native `GlobalShortcut` bindings in QML rely on Hyprland's global shortcuts Wayland protocol. They are disabled on Sway and other compositors. On those compositors, you must configure keybinds in your WM config file (e.g. `~/.config/sway/config`) calling the Quickshell IPC directly.
+2. **Hyprland Workspace Dispatching**:
+   The custom workspace dispatch options using `hyprctl` only apply when running under Hyprland. Sway/i3 use native workspace focusing commands (`swaymsg workspace`).
+
+---
 
 ## Controlling the shell via IPC (recommended)
 
-`shell.qml` exposes three Quickshell `IpcHandler` targets so the launcher, the
-session menu and the lockscreen can be triggered from anywhere while the shell is
-running:
+`shell.qml` exposes three Quickshell `IpcHandler` targets so the launcher, the session menu and the lockscreen can be triggered from anywhere while the shell is running:
 
 | Target       | Functions                 | What it does                              |
 |--------------|---------------------------|-------------------------------------------|
@@ -108,9 +118,9 @@ qs ipc show                     # list every target/function exposed
 
 ### OSD keybinds (media keys)
 
-Bind your media keys in `hyprland.conf` (`bindel` repeats while held; `bindl` works
-even while the screen is locked):
+Bind your media keys in your window manager configuration:
 
+#### Hyprland (`hyprland.conf`)
 ```ini
 bindel = , XF86AudioRaiseVolume,  exec, qs ipc call osd volumeUp
 bindel = , XF86AudioLowerVolume,  exec, qs ipc call osd volumeDown
@@ -119,12 +129,20 @@ bindel = , XF86MonBrightnessUp,   exec, qs ipc call osd brightnessUp
 bindel = , XF86MonBrightnessDown, exec, qs ipc call osd brightnessDown
 ```
 
-### Hyprland keybinds (IPC)
+#### Sway / i3 (`~/.config/sway/config`)
+```text
+bindsym --locked XF86AudioRaiseVolume  exec qs ipc call osd volumeUp
+bindsym --locked XF86AudioLowerVolume  exec qs ipc call osd volumeDown
+bindsym --locked XF86AudioMute         exec qs ipc call osd volumeMuteToggle
+bindsym --locked XF86MonBrightnessUp   exec qs ipc call osd brightnessUp
+bindsym --locked XF86MonBrightnessDown exec qs ipc call osd brightnessDown
+```
 
-This is the most reliable way to bind the shell — especially with **Lua-generated
-Hyprland configs (Hyprland 0.46+)**, where the `global` dispatcher tends to be
-fragile. Add to your `hyprland.conf`:
+### Window Manager keybinds (IPC)
 
+This is the recommended way to bind the shell:
+
+#### Hyprland (`hyprland.conf`)
 ```ini
 bind = SUPER, D, exec, qs ipc call launcher toggle      # application launcher
 bind = SUPER SHIFT, E, exec, qs ipc call session toggle # session menu
@@ -132,16 +150,19 @@ bind = SUPER, L, exec, qs ipc call lockscreen lock      # lock the screen
 bind = SUPER, Y, exec, qs ipc call wallpaper toggle     # wallpaper menu
 ```
 
-Reload Hyprland (`hyprctl reload`) and press the keybind.
+#### Sway / i3 (`~/.config/sway/config`)
+```text
+bindsym $mod+d exec qs ipc call launcher toggle
+bindsym $mod+Shift+e exec qs ipc call session toggle
+bindsym $mod+l exec qs ipc call lockscreen lock
+bindsym $mod+y exec qs ipc call wallpaper toggle
+```
 
-> 📖 Full keybind setup — including **Hyprland with Lua** (generating
-> `hyprland.conf`, `init.lua`, `hyprctl keyword`, `source`) and how to verify the
-> IPC targets (`qs ipc show`) — is in [`KEYBINDS.md`](KEYBINDS.md).
+> 📖 Full keybind setup — including **Hyprland with Lua** (generating `hyprland.conf`, `init.lua`, `hyprctl keyword`, `source`) and how to verify the IPC targets (`qs ipc show`) — is in [`KEYBINDS.md`](KEYBINDS.md).
 
-### Global shortcuts (fallback)
+### Global shortcuts fallback (Hyprland only)
 
-`shell.qml` also keeps three Quickshell `GlobalShortcut`s (`launcher`, `session` and
-`lock`) as a fallback. To use them instead of IPC:
+`shell.qml` also registers three Quickshell `GlobalShortcut`s (`launcher`, `session` and `lock`) as a fallback (exclusive to Hyprland). To use them instead of IPC:
 
 ```ini
 bind = SUPER, D, global, quickshell:launcher      # application launcher
@@ -150,8 +171,7 @@ bind = SUPER, L, global, quickshell:lock          # lock the screen
 bind = SUPER, Y, global, quickshell:wallpaper     # wallpaper menu
 ```
 
-The format is `<appid>:<name>` (default `appid` is `quickshell`). See
-[`KEYBINDS.md`](KEYBINDS.md) for details.
+The format is `<appid>:<name>` (default `appid` is `quickshell`). See [`KEYBINDS.md`](KEYBINDS.md) for details.
 
 ### Launcher keybindings
 

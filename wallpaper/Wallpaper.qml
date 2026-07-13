@@ -72,14 +72,8 @@ PanelWindow {
     function apply(path) {
         currentWallpaper = path
         lastError = ""
-        _persist(path)
-        if (wallpaper.monitor !== "") {
-            _applyWithMonitor(wallpaper.monitor, path)
-            return
-        }
-        // No monitor configured — ask Hyprland for the focused monitor name first.
-        _pendingApplyPath = path
-        monitorDetect.running = true
+        wallpaperProc.command = [Quickshell.env("HOME") + "/.config/quickshell/wallpaper/set-wallpaper.sh", "apply", path, wallpaper.monitor]
+        wallpaperProc.running = true
     }
 
     // Removes the active wallpaper: unloads it from hyprpaper (so nothing
@@ -92,25 +86,6 @@ PanelWindow {
         clearProc.running = true
     }
 
-    // Saves the chosen path so it survives logout/reboot. mkdir -p ensures
-    // the cache dir exists on first run.
-    function _persist(path) {
-        persistProc.command = ["sh", "-c",
-            "mkdir -p \"$(dirname '" + wallpaper.stateFile + "')\" && " +
-            "printf '%s' '" + path + "' > '" + wallpaper.stateFile + "'"
-        ]
-        persistProc.running = true
-    }
-
-    function _applyWithMonitor(mon, path) {
-        // hyprpaper 0.8.x (hyprwire backend) handles preload internally —
-        // a direct "wallpaper" call is enough. Syntax requires a space
-        // after the comma: "MON, /path".
-        wallpaperProc.command = ["hyprctl", "hyprpaper", "wallpaper", mon + ", " + path]
-        wallpaperProc.running = true
-    }
-
-    property string _pendingApplyPath: ""
     property string lastError: ""
 
     // Picks a random wallpaper from the already-scanned list and applies it.
@@ -207,9 +182,7 @@ PanelWindow {
     // isn't reapplied by apply-saved-wallpaper.sh on the next login.
     Process {
         id: clearProc
-        command: ["sh", "-c",
-            "hyprctl hyprpaper unload all >/dev/null 2>&1; rm -f '" + wallpaper.stateFile + "'"
-        ]
+        command: [Quickshell.env("HOME") + "/.config/quickshell/wallpaper/set-wallpaper.sh", "clear"]
         running: false
         onExited: function(code) {
             if (code !== 0)
@@ -222,23 +195,7 @@ PanelWindow {
     // (some hyprpaper versions reject an empty monitor field).
     Process {
         id: monitorDetect
-        command: ["sh", "-c", "hyprctl monitors -j | jq -r '.[] | select(.focused==true) | .name'"]
         running: false
-        stdout: SplitParser {
-            onRead: function(line) {
-                var mon = line.trim()
-                if (mon !== "" && wallpaper._pendingApplyPath !== "") {
-                    wallpaper._applyWithMonitor(mon, wallpaper._pendingApplyPath)
-                    wallpaper._pendingApplyPath = ""
-                }
-            }
-        }
-        onExited: function(code) {
-            if (code !== 0) {
-                wallpaper.lastError = "Failed to detect monitor (jq/hyprctl missing?)"
-                wallpaper._pendingApplyPath = ""
-            }
-        }
     }
 
     // ══════════════════════════════════════════════════════

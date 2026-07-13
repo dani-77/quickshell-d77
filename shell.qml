@@ -1,7 +1,6 @@
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 
@@ -31,6 +30,12 @@ import "wallpaper"
 import "backdrop"
 
 ShellRoot {
+    readonly property string compositor: {
+        if (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== null) return "hyprland";
+        if (Quickshell.env("SWAYSOCK") !== null) return "sway";
+        if (Quickshell.env("I3SOCK") !== null) return "i3";
+        return "generic";
+    }
 
     // ══════════════════════════════════════════════════════
     // BACKDROP (conditional decorative background)
@@ -286,39 +291,16 @@ ShellRoot {
         function clear(): void { wallpaperPicker.clear() }
     }
 
-    // ── Global Hyprland keybinds (fallback) ───────────────
-    // As an alternative to IPC. Lets you open the launcher and
-    // session menu via the "global" dispatcher. The prefix is the appid
-    // (default "quickshell"), so the binds look like this:
-    //   bind = SUPER, D,       global, quickshell:launcher
-    //   bind = SUPER SHIFT, E, global, quickshell:session
-    // Using IPC is recommended; see KEYBINDS.md.
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "launcher"
-        description: "open/close app launcher"
-        onPressed: appLauncher.toggle()
-    }
-
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "session"
-        description: "open/close session menu (lock/suspend/reboot/...)"
-        onPressed: g.sessionOpen = !g.sessionOpen
-    }
-
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "lock"
-        description: "Lock the screen (native lockscreen)"
-        onPressed: lockScreen.lock()
-    }
-
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "dashboard"
-        description: "open/close the quick info dashboard (stats, weather, cmus, session)"
-        onPressed: dashboard.toggle()
+    // ── Global Hyprland keybinds (fallback, loaded only on Hyprland) ──
+    Loader {
+        active: compositor === "hyprland"
+        source: "HyprlandShortcuts.qml"
+        onLoaded: {
+            item.appLauncher = appLauncher;
+            item.globalState = g;
+            item.lockScreen = lockScreen;
+            item.dashboard = dashboard;
+        }
     }
 
     // ══════════════════════════════════════════════════════
@@ -464,12 +446,6 @@ ShellRoot {
         Component.onCompleted: running = true
     }
 
-    // Workspace switch process (command set on click).
-    Process {
-        id: wsProc
-        running: false
-    }
-
     // Opens nmtui in a floating terminal (same logic as the dashboard).
     Process {
         id: nmtuiBarProc
@@ -481,7 +457,16 @@ ShellRoot {
     Process { id: suspendProc;  command: ["loginctl", "suspend"];   running: false }
     Process { id: rebootProc;   command: ["loginctl", "reboot"];    running: false }
     Process { id: shutdownProc; command: ["loginctl", "poweroff"];  running: false }
-    Process { id: logoutProc;   command: ["hyprctl", "dispatch", "hl.dsp.exit()"]; running: false }
+    Process {
+        id: logoutProc
+        command: {
+            if (compositor === "hyprland") return ["hyprctl", "dispatch", "hl.dsp.exit()"];
+            if (compositor === "sway") return ["swaymsg", "exit"];
+            if (compositor === "i3") return ["i3-msg", "exit"];
+            return ["loginctl", "terminate-session", "self"];
+        }
+        running: false
+    }
 
     // Periodically refresh all the polled system stats.
     Timer {
@@ -550,38 +535,16 @@ ShellRoot {
 
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
-                // ── Workspaces ────────────────────────────────
-                Repeater {
-                    model: 9
-                    Rectangle {
-                        required property int index
-                        property int  wsId:     index + 1
-                        property var  ws:       Hyprland.workspaces.values.find(w => w.id === wsId)
-                        property bool isActive: Hyprland.focusedWorkspace !== null &&
-                                                Hyprland.focusedWorkspace.id === wsId
-
-                        width: 22
-                        height: 22
-                        radius: 4
-                        color: isActive
-                            ? g.colPurple
-                            : (ws ? Qt.rgba(0.48, 0.64, 0.97, 0.25) : "transparent")
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: parent.wsId
-                            color: parent.isActive ? g.colBg
-                                 : (parent.ws      ? g.colBlue : g.colMuted)
-                            font { family: g.font; pixelSize: g.fsize; bold: true }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                wsProc.command = ["hyprctl", "dispatch", "hl.dsp.focus({workspace = " + wsId + "})"]
-                                wsProc.running = true
-                            }
-                        }
+                // ── Workspaces (Loaded Dynamically) ──────────
+                Loader {
+                    id: workspacesLoader
+                    source: {
+                        if (compositor === "hyprland") return "workspaces/WorkspacesHyprland.qml";
+                        if (compositor === "sway" || compositor === "i3") return "workspaces/WorkspacesSway.qml";
+                        return "";
+                    }
+                    onLoaded: {
+                        item.globalState = g;
                     }
                 }
 
