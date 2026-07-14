@@ -162,5 +162,12 @@ startup-command line and quit mechanism for that compositor's own syntax.
 - No per-user avatar picker or multi-user list — this is deliberately a simple
   username/password/session form, consistent with the rest of quickshell-d77 (see the
   [lockscreen module](../lockscreen)). Nothing above stops you from adding one later.
-- "Remember last user/session" isn't implemented — every boot starts blank. That's a small,
-  self-contained addition to `GreeterState.qml`/`Greeter.qml` if you want it.
+
+## Remembering the last user/session
+
+The username and session picked on the last *successful* login are persisted to
+`$HOME/.cache/quickshell/greeter/last-session.json` (for the `greeter` system user, that's
+`/var/lib/greeter/.cache/...` per the Installation steps above) and pre-filled/pre-selected on
+the next boot. The session is matched by name, not list position, since discovery order isn't
+guaranteed stable across boots. See `GreeterState.qml`'s `rememberLastLogin()`/`lastUsername`/
+`lastSessionName`.

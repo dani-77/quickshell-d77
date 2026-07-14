@@ -264,6 +264,7 @@ Scope {
                 Greetd.cancelSession();
                 return;
             }
+            GreeterState.rememberLastLogin(GreeterState.username, GreeterState.sessionList[idx]);
             const args = execCmd.trim().split(/\s+/);
             if (sessionType === "x11")
                 Greetd.launch(["startx", "/usr/bin/env"].concat(args), ["XDG_SESSION_TYPE=x11"]);
