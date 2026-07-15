@@ -132,7 +132,7 @@ Rectangle {
                     spacing: 10
 
                     Text {
-                        text: ""
+                        text: "󰀄"
                         font.family: root.font
                         font.pixelSize: root.fsize + 4
                         color: root.colPurple

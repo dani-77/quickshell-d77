@@ -24,6 +24,10 @@ import "dashboard"
 // Exposes Wallpaper
 import "wallpaper"
 
+// Music picker module (musicpicker dir).
+// Exposes MusicPicker (Artist/Album search popup, plays via cmus)
+import "musicpicker"
+
 // Backdrop module (backdrop dir).
 // Exposes Backdrop and WallpaperBackground (decorative background shown
 // only while no wallpaper is set).
@@ -163,10 +167,29 @@ ShellRoot {
         marginTop:  bar.margins.top
         marginLeft: bar.margins.left
 
-        onLockRequested:     lockScreen.lock()
-        onLogoutRequested:   logoutProc.running = true
-        onRebootRequested:   rebootProc.running = true
-        onPoweroffRequested: shutdownProc.running = true
+        onLockRequested:        lockScreen.lock()
+        onLogoutRequested:      logoutProc.running = true
+        onRebootRequested:      rebootProc.running = true
+        onPoweroffRequested:    shutdownProc.running = true
+        onMusicPickerRequested: musicPicker.open()
+    }
+
+    // ══════════════════════════════════════════════════════
+    // MUSIC PICKER
+    // ══════════════════════════════════════════════════════
+    // Native Artist/Album picker. Scans musicDir for two-level Artist/Album
+    // folders and plays the pick through Services.CmusControl (cmus).
+    // Opened from Dashboard's "Browse albums" button or via IPC.
+    MusicPicker {
+        id: musicPicker
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colCyan:   g.colCyan
+        colBlue:   g.colBlue
+        colPurple: g.colPurple
+        font:      g.font
+        fsize:     g.fsize
     }
 
     // ══════════════════════════════════════════════════════
@@ -295,6 +318,30 @@ ShellRoot {
         // state file. The backdrop (decorative background) becomes
         // visible automatically while no wallpaper is set.
         function clear(): void { wallpaperPicker.clear() }
+    }
+
+    // Music picker IPC.
+    //   qs ipc call musicpicker toggle
+    //   qs ipc call musicpicker open
+    //   qs ipc call musicpicker close
+    //   qs ipc call musicpicker reload
+    //
+    // Example bind in hyprland.conf:
+    //   bind = SUPER, M, exec, qs ipc call musicpicker toggle
+    IpcHandler {
+        target: "musicpicker"
+
+        // Toggles the picker visibility.
+        function toggle(): void { musicPicker.toggle() }
+        // Opens the picker and rescans musicDir.
+        function open(): void { musicPicker.open() }
+        // Closes the picker.
+        function close(): void { musicPicker.close() }
+        // Rescans musicDir without opening/closing the picker.
+        function reload(): void { musicPicker.reload() }
+        // Plays an album directly by path, without opening the picker.
+        // Useful in scripts: qs ipc call musicpicker play "/home/daniel/Música/Artist/Album"
+        function play(path: string): void { musicPicker.playPath(path) }
     }
 
     // ── Global Hyprland keybinds (fallback, loaded only on Hyprland) ──
