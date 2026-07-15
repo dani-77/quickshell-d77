@@ -9,6 +9,12 @@
 // same way Launcher itself mirrors AppLoader, swapping desktop apps for
 // album folders and launch() for CmusControl.playAlbum().
 // Opened from the dashboard's "Browse albums" button (Dashboard.qml).
+//
+// Display text ("artist — album") is read from the actual audio tags
+// (album_artist/artist/album, via ffprobe on one file per folder) rather
+// than the Artist/Album directory names, since folder names don't always
+// match the tagged metadata. Falls back to the directory name whenever
+// ffprobe is missing or a tag is empty.
 // ══════════════════════════════════════════════════════
 import QtQuick
 import QtQuick.Layouts
@@ -80,7 +86,37 @@ PanelWindow {
     function reload() {
         loading = true
         albums  = []
+        scanProc.command = ["sh", "-c", _buildScanCommand()]
         scanProc.running = true
+    }
+
+    // Builds the shell one-liner that walks musicDir two levels deep and,
+    // for each Artist/Album folder, prints "path<TAB>tagArtist<TAB>tagAlbum".
+    // tagArtist/tagAlbum come from ffprobe reading the first audio file in
+    // the folder (album_artist preferred, falling back to artist) and are
+    // left empty when ffprobe is unavailable or the file has no such tag —
+    // the empty case is handled in JS by falling back to the folder name.
+    function _buildScanCommand() {
+        var mdir = "'" + String(picker.musicDir).replace(/'/g, "'\\''") + "'"
+        return "have_ffprobe=0; command -v ffprobe >/dev/null 2>&1 && have_ffprobe=1; " +
+               "find " + mdir + " -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort | " +
+               "while IFS= read -r dir; do " +
+                 "artist=''; album=''; " +
+                 "if [ \"$have_ffprobe\" = 1 ]; then " +
+                   "file=$(find \"$dir\" -maxdepth 1 -type f \\( " +
+                     "-iname '*.mp3' -o -iname '*.flac' -o -iname '*.ogg' -o -iname '*.opus' " +
+                     "-o -iname '*.m4a' -o -iname '*.wav' -o -iname '*.wma' \\) " +
+                     "2>/dev/null | sort | head -n1); " +
+                   "if [ -n \"$file\" ]; then " +
+                     "tags=$(ffprobe -v error -show_entries format_tags=album_artist,artist,album " +
+                       "-of default=noprint_wrappers=1:nokey=0 \"$file\" 2>/dev/null); " +
+                     "artist=$(printf '%s\\n' \"$tags\" | grep -i '^TAG:album_artist=' | head -n1 | cut -d= -f2-); " +
+                     "[ -z \"$artist\" ] && artist=$(printf '%s\\n' \"$tags\" | grep -i '^TAG:artist=' | head -n1 | cut -d= -f2-); " +
+                     "album=$(printf '%s\\n' \"$tags\" | grep -i '^TAG:album=' | head -n1 | cut -d= -f2-); " +
+                   "fi; " +
+                 "fi; " +
+                 "printf '%s\\t%s\\t%s\\n' \"$dir\" \"$artist\" \"$album\"; " +
+               "done"
     }
 
     // ── Moves selection keeping inside bounds ─────────────
@@ -118,30 +154,33 @@ PanelWindow {
     // PROCESSES
     // ══════════════════════════════════════════════════════
 
-    // Scans musicDir for two-level Artist/Album directories.
-    // %P is the path relative to musicDir, e.g. "Emperor/1994 - ...",
-    // split in JS below into artist/album.
+    // Scans musicDir for two-level Artist/Album directories, tagging each
+    // with artist/album read from its audio files (command built by
+    // _buildScanCommand(), set in reload()). Falls back to the Artist/Album
+    // directory names whenever a tag comes back empty.
     Process {
         id: scanProc
-        command: ["sh", "-c",
-            "find \"" + picker.musicDir + "\" -mindepth 2 -maxdepth 2 -type d " +
-            "-printf \"%P\\t%p\\n\" 2>/dev/null | sort"
-        ]
         running: false
         stdout: SplitParser {
             onRead: function (line) {
                 if (line.trim() === "")
                     return
                 var parts = line.split("\t")
-                if (parts.length < 2)
+                if (parts.length < 3)
                     return
-                var rel   = parts[0]
-                var path  = parts[1]
+                var path      = parts[0]
+                var tagArtist = parts[1].trim()
+                var tagAlbum  = parts[2].trim()
+
+                var rel   = path.startsWith(picker.musicDir + "/")
+                    ? path.slice(picker.musicDir.length + 1) : path
                 var slash = rel.indexOf("/")
-                if (slash < 0)
-                    return
-                var artist = rel.slice(0, slash)
-                var album  = rel.slice(slash + 1)
+                var dirArtist = slash >= 0 ? rel.slice(0, slash)     : rel
+                var dirAlbum  = slash >= 0 ? rel.slice(slash + 1)    : ""
+
+                var artist = tagArtist || dirArtist
+                var album  = tagAlbum  || dirAlbum
+
                 var arr = picker.albums.slice()
                 arr.push({ artist: artist, album: album, path: path, display: artist + " — " + album })
                 picker.albums = arr
