@@ -1,8 +1,9 @@
 // ══════════════════════════════════════════════════════
 // MusicPicker.qml
-// Searchable Artist/Album popup, scanning musicDir for two-level
-// Artist/Album folders and starting playback of the picked album in cmus
-// via Services.CmusControl.playAlbum().
+// Searchable Artist/Album popup, sourcing albums from the union of cmus's
+// own live library (whatever directories have been :add-ed to it,
+// wherever they live) and a scan of musicDir, then starting playback of
+// the picked album in cmus via Services.CmusControl.playAlbum().
 //
 // Port of music_picker.py from fabric-d77 to native quickshell: mirrors
 // Launcher.qml's search+list pattern (TextInput + filtered ListView) the
@@ -41,8 +42,41 @@ PanelWindow {
     // ══════════════════════════════════════════════════════
     // CONFIG
     // ══════════════════════════════════════════════════════
-    // Directory to scan for Artist/Album folders. Override in shell.qml if needed.
-    property string musicDir: Quickshell.env("HOME") + "/Música"
+    // Directory scanned by hand and merged with cmus's own library (see
+    // _buildScanCommand) — covers albums that haven't been :add-ed to
+    // cmus yet. Resolved from `xdg-user-dir MUSIC` at startup (see
+    // musicDirProc below) so it follows whatever the user has configured
+    // in user-dirs.dirs instead of being hardcoded here; falls back to
+    // ~/Música if xdg-user-dir is missing or unconfigured. Override in
+    // shell.qml if needed — an explicit override there wins since it
+    // happens after Component.onCompleted.
+    property string musicDir: ""
+    property bool   _musicDirResolved: false
+    property bool   _pendingOpen: false
+
+    Component.onCompleted: musicDirProc.running = true
+
+    // Resolves musicDir once at startup; falls back to ~/Música when
+    // xdg-user-dir is missing, fails, or MUSIC isn't set in user-dirs.dirs
+    // (in which case xdg-user-dir just echoes $HOME back).
+    Process {
+        id: musicDirProc
+        running: false
+        command: ["sh", "-c",
+            "d=''; command -v xdg-user-dir >/dev/null 2>&1 && d=$(xdg-user-dir MUSIC 2>/dev/null); " +
+            "[ -z \"$d\" ] || [ \"$d\" = \"$HOME\" ] && d=\"$HOME/Música\"; " +
+            "printf '%s' \"$d\""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                picker.musicDir = text || (Quickshell.env("HOME") + "/Música")
+                picker._musicDirResolved = true
+                if (picker._pendingOpen) {
+                    picker._pendingOpen = false
+                    picker._doOpen()
+                }
+            }
+        }
+    }
 
     // ══════════════════════════════════════════════════════
     // STATE
@@ -69,6 +103,13 @@ PanelWindow {
 
     // ── Public API ───────────────────────────────────────
     function open() {
+        if (!_musicDirResolved) {
+            _pendingOpen = true
+            return
+        }
+        _doOpen()
+    }
+    function _doOpen() {
         searchField.text = ""
         query    = ""
         selected = 0
@@ -90,23 +131,32 @@ PanelWindow {
         scanProc.running = true
     }
 
-    // Builds the shell one-liner that walks musicDir two levels deep and,
-    // for each Artist/Album folder, prints "path<TAB>tagArtist<TAB>tagAlbum".
+    // Builds the shell one-liner that sources album directories from the
+    // union of two places: cmus's own live library (`cmus-remote -C 'save
+    // -l -'`, a plain list of every file path cmus has :add-ed, from
+    // however many separate roots the user has added — ~/Música, ~/Audio,
+    // a mounted drive, whatever) and a hand scan of musicDir — any depth,
+    // flat or nested Artist/Album. Deduplicated by directory, so an album
+    // under both is only listed once. This way nothing is hidden just
+    // because it hasn't been :add-ed to cmus yet, and nothing outside
+    // musicDir is hidden just because cmus hasn't been started.
+    // For each directory, prints "path<TAB>tagArtist<TAB>tagAlbum".
     // tagArtist/tagAlbum come from ffprobe reading the first audio file in
     // the folder (album_artist preferred, falling back to artist) and are
     // left empty when ffprobe is unavailable or the file has no such tag —
-    // the empty case is handled in JS by falling back to the folder name.
+    // the empty case is handled in JS by falling back to the folder name(s).
     function _buildScanCommand() {
         var mdir = "'" + String(picker.musicDir).replace(/'/g, "'\\''") + "'"
+        var exts = "\\( -iname '*.mp3' -o -iname '*.flac' -o -iname '*.ogg' -o -iname '*.opus' " +
+                   "-o -iname '*.m4a' -o -iname '*.wav' -o -iname '*.wma' \\)"
         return "have_ffprobe=0; command -v ffprobe >/dev/null 2>&1 && have_ffprobe=1; " +
-               "find " + mdir + " -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort | " +
-               "while IFS= read -r dir; do " +
+               "dirs=$({ cmus-remote -C 'save -l -' 2>/dev/null | sed 's#/[^/]*$##'; " +
+                        "find " + mdir + " -type f " + exts + " 2>/dev/null | sed 's#/[^/]*$##'; } | sort -u); " +
+               "printf '%s\\n' \"$dirs\" | while IFS= read -r dir; do " +
+                 "[ -z \"$dir\" ] && continue; " +
                  "artist=''; album=''; " +
                  "if [ \"$have_ffprobe\" = 1 ]; then " +
-                   "file=$(find \"$dir\" -maxdepth 1 -type f \\( " +
-                     "-iname '*.mp3' -o -iname '*.flac' -o -iname '*.ogg' -o -iname '*.opus' " +
-                     "-o -iname '*.m4a' -o -iname '*.wav' -o -iname '*.wma' \\) " +
-                     "2>/dev/null | sort | head -n1); " +
+                   "file=$(find \"$dir\" -maxdepth 1 -type f " + exts + " 2>/dev/null | sort | head -n1); " +
                    "if [ -n \"$file\" ]; then " +
                      "tags=$(ffprobe -v error -show_entries format_tags=album_artist,artist,album " +
                        "-of default=noprint_wrappers=1:nokey=0 \"$file\" 2>/dev/null); " +
@@ -154,13 +204,16 @@ PanelWindow {
     // PROCESSES
     // ══════════════════════════════════════════════════════
 
-    // Scans musicDir for two-level Artist/Album directories, tagging each
-    // with artist/album read from its audio files (command built by
-    // _buildScanCommand(), set in reload()). Falls back to the Artist/Album
-    // directory names whenever a tag comes back empty.
+    // Sources album directories from the union of cmus's own live library
+    // and a scan of musicDir (command built by _buildScanCommand(), set
+    // in reload()). Needs the real cmus's XDG_RUNTIME_DIR/HOME (see
+    // Services.CmusControl.cmusEnv) to reach its socket, same as every
+    // other cmus-remote call in this shell. Falls back to the directory
+    // name(s) whenever a tag comes back empty.
     Process {
         id: scanProc
         running: false
+        environment: Services.CmusControl.cmusEnv
         stdout: SplitParser {
             onRead: function (line) {
                 if (line.trim() === "")
@@ -172,13 +225,17 @@ PanelWindow {
                 var tagArtist = parts[1].trim()
                 var tagAlbum  = parts[2].trim()
 
-                var rel   = path.startsWith(picker.musicDir + "/")
-                    ? path.slice(picker.musicDir.length + 1) : path
-                var slash = rel.indexOf("/")
-                var dirArtist = slash >= 0 ? rel.slice(0, slash)     : rel
-                var dirAlbum  = slash >= 0 ? rel.slice(slash + 1)    : ""
+                // Last path segment is always the album folder; the one
+                // above it (if any) is the artist folder — works for both
+                // a flat layout (Album directly under some root, no artist
+                // segment) and a nested Artist/Album (or deeper) one, and
+                // for directories coming from anywhere in cmus's library,
+                // not just musicDir.
+                var segs = path.split("/")
+                var dirAlbum  = segs[segs.length - 1]
+                var dirArtist = segs.length > 1 ? segs[segs.length - 2] : ""
 
-                var artist = tagArtist || dirArtist
+                var artist = tagArtist || dirArtist || "Unknown Artist"
                 var album  = tagAlbum  || dirAlbum
 
                 var arr = picker.albums.slice()
@@ -377,7 +434,7 @@ PanelWindow {
                     anchors.centerIn: parent
                     visible: picker.results.length === 0
                     text: picker.loading ? "Loading albums..."
-                                          : "No albums found in\n" + picker.musicDir
+                                          : "No albums found in cmus's library\nor in " + picker.musicDir
                     horizontalAlignment: Text.AlignHCenter
                     font.family: picker.font
                     font.pixelSize: picker.fsize
