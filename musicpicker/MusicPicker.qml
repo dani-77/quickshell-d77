@@ -82,6 +82,13 @@ PanelWindow {
     // STATE
     // ══════════════════════════════════════════════════════
     property var albums: []
+    // Tracks "artist — album" keys already added during the current scan —
+    // the same album can physically live under more than one directory
+    // (e.g. an unsorted import folder alongside its organized musicDir
+    // copy), and dedup by directory path alone can't catch that since the
+    // paths genuinely differ. Reset per reload() in _buildScanCommand's
+    // caller below.
+    property var _seenAlbums: ({})
     property bool loading: false
     property string query: ""
     // albums reference forces re-evaluation when the scan updates the list
@@ -127,6 +134,7 @@ PanelWindow {
     function reload() {
         loading = true
         albums  = []
+        _seenAlbums = ({})
         scanProc.command = ["sh", "-c", _buildScanCommand()]
         scanProc.running = true
     }
@@ -235,11 +243,20 @@ PanelWindow {
                 var dirAlbum  = segs[segs.length - 1]
                 var dirArtist = segs.length > 1 ? segs[segs.length - 2] : ""
 
-                var artist = tagArtist || dirArtist || "Unknown Artist"
-                var album  = tagAlbum  || dirAlbum
+                var artist  = tagArtist || dirArtist || "Unknown Artist"
+                var album   = tagAlbum  || dirAlbum
+                var display = artist + " — " + album
+
+                // Same artist/album tags already seen from another
+                // directory this scan (see _seenAlbums above) — skip so it
+                // isn't listed twice.
+                var key = display.toLowerCase()
+                if (picker._seenAlbums[key])
+                    return
+                picker._seenAlbums[key] = true
 
                 var arr = picker.albums.slice()
-                arr.push({ artist: artist, album: album, path: path, display: artist + " — " + album })
+                arr.push({ artist: artist, album: album, path: path, display: display })
                 picker.albums = arr
             }
         }
