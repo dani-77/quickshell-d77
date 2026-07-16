@@ -23,9 +23,9 @@ qs -p ~/.config/quickshell/shell.qml
 ## Compositor-Agnostic & Workspaces
 
 The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, `niri`, or others) at startup:
-- **Hyprland**: Dynamically loads a workspace widget reading `Hyprland.workspaces` and using `hyprctl` for workspace switching.
-- **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces.
-- **niri**: detected via `$NIRI_SOCKET`, used for a native logout (see below). No workspace widget yet — niri's workspace model doesn't map onto the fixed 1-9 grid the other two use.
+- **Hyprland**: Dynamically loads a workspace widget reading `Hyprland.workspaces` and using `hyprctl` for workspace switching. Fixed 1-9 grid.
+- **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces. Fixed 1-9 grid.
+- **niri**: detected via `$NIRI_SOCKET`. Dynamically loads a workspace widget reading `Quickshell.WindowManager` (the generic `ext-workspace-v1` protocol niri implements — no dedicated Quickshell module needed, and no IPC polling either, since it's reactive out of the box). Unlike Hyprland/Sway, this does **not** show a fixed 1-9 grid: niri creates workspaces dynamically instead of preallocating a fixed set, so only the workspaces that actually exist are shown, and switching calls the workspace object's own `activate()` method rather than shelling out to a CLI.
 - **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
 
 The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, `niri msg action quit --skip-confirmation`, or standard login1 session termination (`loginctl terminate-session`) as a last resort.
