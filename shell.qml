@@ -684,6 +684,7 @@ ShellRoot {
                     source: {
                         if (compositor === "hyprland") return "workspaces/WorkspacesHyprland.qml";
                         if (compositor === "sway") return "workspaces/WorkspacesSway.qml";
+                        if (compositor === "niri") return "workspaces/WorkspacesNiri.qml";
                         return "";
                     }
                     onLoaded: {
