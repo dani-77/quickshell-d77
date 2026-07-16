@@ -26,6 +26,50 @@ Singleton {
     property string status:  "stopped"
     property string track:   "—"
 
+    // ══════════════════════════════════════════════════════
+    // CMUS ENVIRONMENT (XDG_RUNTIME_DIR/HOME) — read from cmus itself
+    // ══════════════════════════════════════════════════════
+    // A tmux/screen-hosted cmus can outlive a logout/compositor switch, so
+    // its actual XDG_RUNTIME_DIR/HOME can end up different from ours by the
+    // time we go to run cmus-remote — we can't just assume our own
+    // environment still matches. Instead these are discovered by reading
+    // the running cmus process's own environment (/proc/<pid>/environ) and
+    // applied to every cmus-remote call below via `environment: root.cmusEnv`.
+    // Empty until the first successful discovery, in which case cmus-remote
+    // just inherits our own environment as before.
+    property string _cmusRuntimeDir: ""
+    property string _cmusHome:       ""
+    readonly property var cmusEnv: _cmusRuntimeDir
+        ? ({ XDG_RUNTIME_DIR: _cmusRuntimeDir, HOME: _cmusHome || Quickshell.env("HOME") })
+        : ({})
+
+    function _discoverCmusEnv() {
+        _envDiscoverProc.running = true
+    }
+
+    Process {
+        id: _envDiscoverProc
+        running: false
+        command: ["sh", "-c",
+            "pid=$(pgrep -x cmus 2>/dev/null | head -n1); " +
+            "[ -z \"$pid\" ] && pid=$(ps -eo pid,comm 2>/dev/null | awk '$2==\"cmus\"{print $1; exit}'); " +
+            "[ -n \"$pid\" ] && tr '\\0' '\\n' < /proc/$pid/environ 2>/dev/null | grep -E '^(XDG_RUNTIME_DIR|HOME)='"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                text.split("\n").forEach(line => {
+                    if (line.startsWith("XDG_RUNTIME_DIR="))
+                        root._cmusRuntimeDir = line.slice("XDG_RUNTIME_DIR=".length)
+                    else if (line.startsWith("HOME="))
+                        root._cmusHome = line.slice("HOME=".length)
+                })
+            }
+        }
+        onExited: root.refresh()
+    }
+
+    Component.onCompleted: root._discoverCmusEnv()
+
     // Parses `cmus-remote -Q` output. Shared by refresh() and the
     // album-skip queries below, which all need the same status/tag lines.
     function _parseQuery(text) {
@@ -52,6 +96,7 @@ Singleton {
         id: _queryProc
         running: false
         command: ["cmus-remote", "-Q"]
+        environment: root.cmusEnv
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.trim() === "") {
@@ -73,6 +118,9 @@ Singleton {
                 root.running = false
                 root.status  = "stopped"
                 root.track   = "—"
+                // Cached env may be stale (e.g. cmus was restarted outside
+                // startHeadless()) — rediscover so the next refresh() works.
+                root._discoverCmusEnv()
             }
         }
     }
@@ -82,15 +130,16 @@ Singleton {
     function togglePlay() { _toggleProc.running = true }
     function next()       { _nextProc.running = true }
 
-    Process { id: _prevProc;   command: ["cmus-remote", "-r"]; running: false; onExited: root.refresh() }
-    Process { id: _toggleProc; command: ["cmus-remote", "-u"]; running: false; onExited: root.refresh() }
-    Process { id: _nextProc;   command: ["cmus-remote", "-n"]; running: false; onExited: root.refresh() }
+    Process { id: _prevProc;   command: ["cmus-remote", "-r"]; environment: root.cmusEnv; running: false; onExited: root.refresh() }
+    Process { id: _toggleProc; command: ["cmus-remote", "-u"]; environment: root.cmusEnv; running: false; onExited: root.refresh() }
+    Process { id: _nextProc;   command: ["cmus-remote", "-n"]; environment: root.cmusEnv; running: false; onExited: root.refresh() }
 
     // ── Headless start (tmux, falling back to screen) ───────
-    // XDG_RUNTIME_DIR/HOME are passed explicitly to cmus: a tmux server
-    // that survives a logout/compositor switch keeps the environment it
-    // was originally launched with, which can make cmus write its control
-    // socket somewhere cmus-remote can no longer find.
+    // XDG_RUNTIME_DIR/HOME are passed explicitly here from our own
+    // environment — the only point where there's no running cmus process
+    // yet to read them back from. Once cmus is up, _startRestartTimer
+    // rediscovers its actual environment (see above) and every cmus-remote
+    // call afterwards follows that instead of assuming it still matches ours.
     function startHeadless() {
         _startProc.running = true
     }
@@ -108,10 +157,13 @@ Singleton {
 
     // Small delay before re-querying: right after startup (inside tmux)
     // cmus has not yet finished initialising its library / control socket.
+    // Rediscover its environment first — it's a fresh process, so this is
+    // the first point we can actually read it back rather than assume it.
+    // _envDiscoverProc.onExited chains into refresh() once that's done.
     Timer {
         id: _startRestartTimer
         interval: 1200
-        onTriggered: root.refresh()
+        onTriggered: root._discoverCmusEnv()
     }
 
     // ── Skip a whole album, forward or backward ─────────────
@@ -138,6 +190,7 @@ Singleton {
         id: _albumStartQuery
         running: false
         command: ["cmus-remote", "-Q"]
+        environment: root.cmusEnv
         stdout: StdioCollector {
             onStreamFinished: {
                 var q = root._parseQuery(text)
@@ -154,6 +207,7 @@ Singleton {
     Process {
         id: _albumStep
         running: false
+        environment: root.cmusEnv
         onExited: _albumCheckQuery.running = true
     }
 
@@ -161,6 +215,7 @@ Singleton {
         id: _albumCheckQuery
         running: false
         command: ["cmus-remote", "-Q"]
+        environment: root.cmusEnv
         stdout: StdioCollector {
             onStreamFinished: {
                 var q = root._parseQuery(text)
@@ -198,6 +253,7 @@ Singleton {
         id: _albumPlayProbe
         running: false
         command: ["cmus-remote", "-Q"]
+        environment: root.cmusEnv
         onExited: function (code) {
             if (code === 0) {
                 root._queueAndPlay(root._pendingAlbumPath)
@@ -222,8 +278,8 @@ Singleton {
         _qClearProc.running = true
     }
 
-    Process { id: _qClearProc; running: false; command: ["cmus-remote", "-q", "-c"]; onExited: _qAddProc.running = true }
-    Process { id: _qAddProc;   running: false; onExited: _qNextProc.running = true }
-    Process { id: _qNextProc;  running: false; command: ["cmus-remote", "-n"]; onExited: _qPlayProc.running = true }
-    Process { id: _qPlayProc;  running: false; command: ["cmus-remote", "-p"]; onExited: root.refresh() }
+    Process { id: _qClearProc; running: false; command: ["cmus-remote", "-q", "-c"]; environment: root.cmusEnv; onExited: _qAddProc.running = true }
+    Process { id: _qAddProc;   running: false; environment: root.cmusEnv; onExited: _qNextProc.running = true }
+    Process { id: _qNextProc;  running: false; command: ["cmus-remote", "-n"]; environment: root.cmusEnv; onExited: _qPlayProc.running = true }
+    Process { id: _qPlayProc;  running: false; command: ["cmus-remote", "-p"]; environment: root.cmusEnv; onExited: root.refresh() }
 }
