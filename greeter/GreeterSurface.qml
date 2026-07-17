@@ -32,14 +32,29 @@ Rectangle {
     property int    fsize:    13
 
     signal loginRequested
+    signal poweroffRequested
+    signal rebootRequested
 
     property bool sessionMenuOpen: false
 
     color: colBg
 
+    // If a username was already remembered from the last successful login
+    // (see GreeterState.lastUsername), it's pre-filled and there's nothing
+    // to pick — send focus straight to the password field instead. Startup
+    // timing is racy against GreeterState's async last-session file load,
+    // so this is checked both here and reactively below.
     Component.onCompleted: {
         if (isPrimaryScreen)
-            usernameBox.forceActiveFocus();
+            (GreeterState.lastUsername !== "" ? passwordBox : usernameBox).forceActiveFocus();
+    }
+
+    Connections {
+        target: GreeterState
+        function onLastUsernameChanged() {
+            if (root.isPrimaryScreen && GreeterState.lastUsername !== "")
+                passwordBox.forceActiveFocus();
+        }
     }
 
     // ── Background: the QML-drawn d77 backdrop (chevrons + logo) ──
@@ -392,5 +407,67 @@ Rectangle {
         visible: root.sessionMenuOpen
         z: 9
         onClicked: root.sessionMenuOpen = false
+    }
+
+    // ── Power controls (bottom-left) ─────────────────────
+    // Kept just under the logo's bottom edge (48px margin, 180px tall —
+    // see GreeterBackdrop.qml) rather than overlapping it: margin + size
+    // here stays comfortably under 48.
+    RowLayout {
+        anchors {
+            left: parent.left
+            bottom: parent.bottom
+            margins: 14
+        }
+        spacing: 6
+        visible: root.isPrimaryScreen
+
+        Rectangle {
+            implicitWidth: 30
+            implicitHeight: 30
+            radius: 8
+            color: poweroffMa.containsMouse ? Qt.rgba(0.97, 0.46, 0.56, 0.2) : Qt.darker(root.colBg, 1.15)
+            border.color: root.colMuted
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "󰐥"
+                font.family: root.font
+                font.pixelSize: root.fsize
+                color: root.colRed
+            }
+
+            MouseArea {
+                id: poweroffMa
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: root.poweroffRequested()
+            }
+        }
+
+        Rectangle {
+            implicitWidth: 30
+            implicitHeight: 30
+            radius: 8
+            color: rebootMa.containsMouse ? Qt.darker(root.colBg, 1.05) : Qt.darker(root.colBg, 1.15)
+            border.color: root.colMuted
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "󰜉"
+                font.family: root.font
+                font.pixelSize: root.fsize
+                color: root.colBlue
+            }
+
+            MouseArea {
+                id: rebootMa
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: root.rebootRequested()
+            }
+        }
     }
 }

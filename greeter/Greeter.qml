@@ -274,6 +274,30 @@ Scope {
     }
 
     // ══════════════════════════════════════════════════════
+    // POWER CONTROLS
+    // Mirrors shell.qml's loginctl/systemctl fallback. The greeter's own
+    // compositor instance is the only active seat session at this point,
+    // so logind's default polkit rules (allow_active) let reboot/poweroff
+    // succeed without a password prompt — the same way GDM/SDDM's own
+    // greeter power buttons work.
+    // ══════════════════════════════════════════════════════
+    function _sessionCmd(action) {
+        return ["sh", "-c", "loginctl " + action + " 2>&1 || systemctl " + action + " 2>&1"];
+    }
+
+    Process {
+        id: rebootProc
+        command: root._sessionCmd("reboot")
+        running: false
+    }
+
+    Process {
+        id: shutdownProc
+        command: root._sessionCmd("poweroff")
+        running: false
+    }
+
+    // ══════════════════════════════════════════════════════
     // ONE SURFACE PER MONITOR — only the first screen gets keyboard
     // focus and interactive fields; other screens just mirror the
     // same background + read-only state (matches the multi-monitor
@@ -312,7 +336,9 @@ Scope {
                 colRed:    root.colRed
                 font:      root.font
                 fsize:     root.fsize
-                onLoginRequested: root.tryLogin()
+                onLoginRequested:     root.tryLogin()
+                onPoweroffRequested:  shutdownProc.running = true
+                onRebootRequested:    rebootProc.running = true
             }
         }
     }

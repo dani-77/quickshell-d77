@@ -37,6 +37,9 @@ passwords itself beyond forwarding what greetd asks for.
   login card follows the same Tokyo Night styling as `lockscreen/LockSurface.qml`.
 - **Multi-monitor**: one surface per screen; only the primary screen is interactive/keyboard
   focused, the rest mirror the same background + state, same approach as the lockscreen.
+- **Power controls**: power-off/reboot buttons in the bottom-left corner (primary screen only),
+  issuing `loginctl poweroff`/`reboot` (falling back to `systemctl` if `loginctl` isn't on
+  `PATH`) — the same command pattern `shell.qml`'s session menu uses.
 
 ## Module Contents
 
