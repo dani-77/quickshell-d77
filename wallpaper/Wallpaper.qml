@@ -74,7 +74,7 @@ PanelWindow {
     function apply(path) {
         currentWallpaper = path
         lastError = ""
-        wallpaperProc.command = [Quickshell.env("HOME") + "/.config/quickshell/wallpaper/set-wallpaper.sh", "apply", path, wallpaper.monitor]
+        wallpaperProc.command = [Quickshell.shellPath("wallpaper/set-wallpaper.sh"), "apply", path, wallpaper.monitor]
         wallpaperProc.running = true
     }
 
@@ -179,7 +179,7 @@ PanelWindow {
     // isn't reapplied by apply-saved-wallpaper.sh on the next login.
     Process {
         id: clearProc
-        command: [Quickshell.env("HOME") + "/.config/quickshell/wallpaper/set-wallpaper.sh", "clear"]
+        command: [Quickshell.shellPath("wallpaper/set-wallpaper.sh"), "clear"]
         running: false
         onExited: function(code) {
             if (code !== 0)
