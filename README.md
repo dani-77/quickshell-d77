@@ -68,7 +68,7 @@ The shell also bundles a native **greeter** for [greetd](https://github.com/kenn
 
 It scans both `/usr/share/wayland-sessions` and `/usr/share/xsessions` (X11) for available sessions, and launches whichever one is picked through greetd's IPC — X11 sessions are wrapped with `startx` automatically, since greetd doesn't start an Xorg server on its own.
 
-The greeter itself needs a Wayland compositor to run under before any user session exists; wrapper scripts ship for **Hyprland**, **niri**, **Sway**, and **mangowc** (`greeter/assets/greet-{hyprland,niri,sway,mango}.sh`) — pick whichever you have installed. All four have been verified to load the greeter cleanly (nested, no QML warnings).
+The greeter itself needs a Wayland compositor to run under before any user session exists; a wrapper script ships for **dwl** (`greeter/assets/greet-dwl.sh`). To host the greeter under a different compositor, copy that script and adapt its startup-command line and quit mechanism.
 
 Unlike the other modules above, the greeter replaces your display manager and needs system-level setup (a `greeter` user, `/etc/greetd/config.toml`, disabling gdm/sddm/lightdm). See [`greeter/README.md`](greeter/README.md) for the full installation steps.
 
