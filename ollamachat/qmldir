@@ -1,0 +1,6 @@
+# ══════════════════════════════════════════════════════
+# Módulo ollamachat do quickshell-d77
+# ══════════════════════════════════════════════════════
+module ollamachat
+
+OllamaChat  1.0  OllamaChat.qml

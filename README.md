@@ -101,6 +101,15 @@ It is automatically triggered from the wallpaper menu or via IPC.
 exec ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
 ```
 
+## Native Ollama chat
+
+The shell also bundles a native **chat popup** (folder `ollamachat/`) for a locally running [Ollama](https://ollama.com) daemon (`http://127.0.0.1:11434`), talked to via `curl` — no HTTP client libraries needed. It streams the model's response as it arrives, lets you switch between already-installed models or pull a new one straight from the popup ("+ instalar novo modelo...", with live download progress), and remembers the last picked model at `~/.config/ollama-chat/model.conf`.
+
+- Click the green **"AI"** button on the bar, **or**
+- Trigger it via a window manager keybind calling the IPC (see below).
+
+The status dot next to "Ollama" reflects whether the `ollama` service is running (checked via `sv status ollama`, i.e. a runit-supervised install — adjust `statusProc`'s command in `ollamachat/OllamaChat.qml` if your system manages it differently, e.g. `systemctl is-active ollama`).
+
 ## Hyprland-Only Features
 
 While all shell widgets, the launcher, lockscreen, and OSD are fully compatible across Wayland compositors, some integrations are exclusive to **Hyprland**:
@@ -123,6 +132,7 @@ While all shell widgets, the launcher, lockscreen, and OSD are fully compatible 
 | `wallpaper`  | `toggle`, `open`, `close`  | Show/hide the wallpaper menu               |
 | `lockscreen` | `lock`, `unlock`, `toggle` | Lock the screen (PAM) / unlock / alternate |
 | `osd`        | `volumeUp`, `volumeDown`, `volumeMuteToggle`, `brightnessUp`, `brightnessDown`, `showVolume`, `showBrightness` | Volume (ALSA, with mute) & brightness (brightnessctl) OSD |
+| `ollamachat` | `toggle`, `open`, `close` | Show/hide the Ollama chat popup |
 
 Call them from the command line:
 
@@ -148,6 +158,10 @@ qs ipc call osd volumeDown         # volume -5%
 qs ipc call osd volumeMuteToggle   # mute / unmute
 qs ipc call osd brightnessUp       # brightness +5%
 qs ipc call osd brightnessDown     # brightness -5%
+
+qs ipc call ollamachat toggle   # toggle the Ollama chat popup
+qs ipc call ollamachat open     # open the Ollama chat popup
+qs ipc call ollamachat close    # close the Ollama chat popup
 
 qs ipc show                     # list every target/function exposed
 ```

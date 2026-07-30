@@ -33,6 +33,10 @@ import "musicpicker"
 // only while no wallpaper is set).
 import "backdrop"
 
+// Ollama chat module (ollamachat dir).
+// Exposes OllamaChat (chat popup for a locally running Ollama daemon)
+import "ollamachat"
+
 ShellRoot {
     // Note: i3 is deliberately not detected here. Every window in this shell
     // (bar, launcher, dashboard, lockscreen, wallpaper picker) is a Wayland
@@ -193,6 +197,27 @@ ShellRoot {
     }
 
     // ══════════════════════════════════════════════════════
+    // OLLAMA CHAT
+    // ══════════════════════════════════════════════════════
+    // Native chat popup for a locally running Ollama daemon
+    // (http://127.0.0.1:11434). Lets you switch/install models and
+    // remembers the last picked one. Opened from the bar's "AI" button
+    // or via IPC.
+    OllamaChat {
+        id: ollamaChat
+        colBg:     g.colBg
+        colFg:     g.colFg
+        colMuted:  g.colMuted
+        colCyan:   g.colCyan
+        colBlue:   g.colBlue
+        colGreen:  g.colGreen
+        colRed:    g.colRed
+        colPurple: g.colPurple
+        font:      g.font
+        fsize:     g.fsize
+    }
+
+    // ══════════════════════════════════════════════════════
     // IPC (recommended way to control the launcher/session)
     // ══════════════════════════════════════════════════════
     // Exposes externally callable methods via:
@@ -342,6 +367,24 @@ ShellRoot {
         // Plays an album directly by path, without opening the picker.
         // Useful in scripts: qs ipc call musicpicker play "/home/daniel/Música/Artist/Album"
         function play(path: string): void { musicPicker.playPath(path) }
+    }
+
+    // Ollama chat IPC.
+    //   qs ipc call ollamachat toggle
+    //   qs ipc call ollamachat open
+    //   qs ipc call ollamachat close
+    //
+    // Example bind in hyprland.conf:
+    //   bind = SUPER, A, exec, qs ipc call ollamachat toggle
+    IpcHandler {
+        target: "ollamachat"
+
+        // Toggles the chat popup visibility.
+        function toggle(): void { ollamaChat.toggle() }
+        // Opens the chat popup.
+        function open(): void { ollamaChat.open() }
+        // Closes the chat popup.
+        function close(): void { ollamaChat.close() }
     }
 
     // ── Global Hyprland keybinds (fallback, loaded only on Hyprland) ──
@@ -673,6 +716,29 @@ ShellRoot {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: appLauncher.toggle()
+                    }
+                }
+
+                Rectangle { width: 1; height: 18; color: g.colMuted }
+
+                // ── Ollama Chat ───────────────────────────────
+                Rectangle {
+                    width: 26
+                    height: 26
+                    radius: 6
+                    color: aiMa.containsMouse ? Qt.lighter(g.colGreen, 1.3) : g.colGreen
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "AI"
+                        font { family: g.font; pixelSize: 9; bold: true }
+                        color: g.colBg
+                    }
+                    MouseArea {
+                        id: aiMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: ollamaChat.toggle()
                     }
                 }
 
