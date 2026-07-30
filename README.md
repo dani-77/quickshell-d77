@@ -123,16 +123,18 @@ While all shell widgets, the launcher, lockscreen, and OSD are fully compatible 
 
 ## Controlling the shell via IPC (recommended)
 
-`shell.qml` exposes three Quickshell `IpcHandler` targets so the launcher, the session menu and the lockscreen can be triggered from anywhere while the shell is running:
+`shell.qml` exposes several Quickshell `IpcHandler` targets so every popup/menu can be triggered from anywhere while the shell is running:
 
-| Target       | Functions                 | What it does                              |
-|--------------|---------------------------|-------------------------------------------|
-| `launcher`   | `toggle`, `open`, `close` | Show/hide the application launcher        |
-| `session`    | `toggle`, `open`, `close` | Show/hide the session menu (lock/suspend/reboot/shutdown/logout) |
-| `wallpaper`  | `toggle`, `open`, `close`  | Show/hide the wallpaper menu               |
-| `lockscreen` | `lock`, `unlock`, `toggle` | Lock the screen (PAM) / unlock / alternate |
-| `osd`        | `volumeUp`, `volumeDown`, `volumeMuteToggle`, `brightnessUp`, `brightnessDown`, `showVolume`, `showBrightness` | Volume (ALSA, with mute) & brightness (brightnessctl) OSD |
-| `ollamachat` | `toggle`, `open`, `close` | Show/hide the Ollama chat popup |
+| Target        | Functions                 | What it does                              |
+|---------------|---------------------------|-------------------------------------------|
+| `launcher`    | `toggle`, `open`, `close` | Show/hide the application launcher        |
+| `session`     | `toggle`, `open`, `close` | Show/hide the session menu (lock/suspend/reboot/shutdown/logout) |
+| `lockscreen`  | `lock`, `unlock`, `toggle` | Lock the screen (PAM) / unlock / alternate |
+| `osd`         | `volumeUp`, `volumeDown`, `volumeMuteToggle`, `brightnessUp`, `brightnessDown`, `showVolume`, `showBrightness` | Volume (ALSA, with mute) & brightness (brightnessctl) OSD |
+| `dashboard`   | `toggle`, `open`, `close` | Show/hide the quick info dashboard (stats, weather, cmus, session) |
+| `wallpaper`   | `toggle`, `open`, `close`, `reload`, `set <path>`, `random`, `clear` | Show/hide the wallpaper menu; rescan/apply/randomize/clear wallpapers |
+| `musicpicker` | `toggle`, `open`, `close`, `reload`, `play <path>` | Show/hide the Artist/Album picker; rescan `musicDir`; play an album directly |
+| `ollamachat`  | `toggle`, `open`, `close` | Show/hide the Ollama chat popup |
 
 Call them from the command line:
 
@@ -149,15 +151,29 @@ qs ipc call lockscreen lock     # lock the screen (asks for password via PAM)
 qs ipc call lockscreen unlock   # unlock without a password
 qs ipc call lockscreen toggle   # alternate locked/unlocked
 
-qs ipc call wallpaper toggle     # toggle the wallpaper menu
-qs ipc call wallpaper open       # open the wallpaper menu
-qs ipc call wallpaper close      # close the wallpaper menu
-
 qs ipc call osd volumeUp           # volume +5% (shows the OSD)
 qs ipc call osd volumeDown         # volume -5%
 qs ipc call osd volumeMuteToggle   # mute / unmute
 qs ipc call osd brightnessUp       # brightness +5%
 qs ipc call osd brightnessDown     # brightness -5%
+
+qs ipc call dashboard toggle    # toggle the quick info dashboard
+qs ipc call dashboard open      # open the dashboard
+qs ipc call dashboard close     # close the dashboard
+
+qs ipc call wallpaper toggle     # toggle the wallpaper menu
+qs ipc call wallpaper open       # open the wallpaper menu
+qs ipc call wallpaper close      # close the wallpaper menu
+qs ipc call wallpaper reload     # rescan the wallpaper directory
+qs ipc call wallpaper set /home/daniel/Wallpaper/foo.png  # apply a wallpaper directly
+qs ipc call wallpaper random     # apply a random wallpaper from the scanned list
+qs ipc call wallpaper clear      # remove the active wallpaper (shows the backdrop)
+
+qs ipc call musicpicker toggle   # toggle the Artist/Album picker
+qs ipc call musicpicker open     # open the picker
+qs ipc call musicpicker close    # close the picker
+qs ipc call musicpicker reload   # rescan musicDir
+qs ipc call musicpicker play "/home/daniel/Música/Artist/Album"  # play an album directly
 
 qs ipc call ollamachat toggle   # toggle the Ollama chat popup
 qs ipc call ollamachat open     # open the Ollama chat popup
@@ -212,13 +228,13 @@ bindsym $mod+y exec qs ipc call wallpaper toggle
 
 ### Global shortcuts fallback (Hyprland only)
 
-`shell.qml` also registers three Quickshell `GlobalShortcut`s (`launcher`, `session` and `lock`) as a fallback (exclusive to Hyprland). To use them instead of IPC:
+`shell.qml` also registers four Quickshell `GlobalShortcut`s (`launcher`, `session`, `lock` and `dashboard`) as a fallback (exclusive to Hyprland). To use them instead of IPC:
 
 ```ini
-bind = SUPER, D, global, quickshell:launcher      # application launcher
-bind = SUPER SHIFT, E, global, quickshell:session # session menu
-bind = SUPER, L, global, quickshell:lock          # lock the screen
-bind = SUPER, Y, global, quickshell:wallpaper     # wallpaper menu
+bind = SUPER, D, global, quickshell:launcher       # application launcher
+bind = SUPER SHIFT, E, global, quickshell:session  # session menu
+bind = SUPER, L, global, quickshell:lock           # lock the screen
+bind = SUPER, I, global, quickshell:dashboard      # quick info dashboard
 ```
 
 The format is `<appid>:<name>` (default `appid` is `quickshell`). See [`KEYBINDS.md`](KEYBINDS.md) for details.
