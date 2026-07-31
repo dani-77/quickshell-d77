@@ -110,6 +110,8 @@ The shell also bundles a native **chat popup** (folder `ollamachat/`) for a loca
 
 The status dot next to "Ollama" reflects whether the `ollama` service is running (checked via `sv status ollama`, i.e. a runit-supervised install — adjust `statusProc`'s command in `ollamachat/OllamaChat.qml` if your system manages it differently, e.g. `systemctl is-active ollama`).
 
+On startup it also runs a one-off hardware check (`nvidia-smi` for NVIDIA VRAM, `rocm-smi`/`lspci` for AMD or other dedicated GPUs, falling back to total system RAM when there's no dedicated GPU) and shows a suggested model-size range for the machine under the header. Installed models whose tag matches that range get a `★` in the picker, and the "+ instalar novo modelo..." field's placeholder shows the suggestion too.
+
 ## Hyprland-Only Features
 
 While all shell widgets, the launcher, lockscreen, and OSD are fully compatible across Wayland compositors, some integrations are exclusive to **Hyprland**:
