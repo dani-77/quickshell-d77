@@ -108,7 +108,9 @@ The shell also bundles a native **chat popup** (folder `ollamachat/`) for a loca
 - Click the green **"AI"** button on the bar, **or**
 - Trigger it via a window manager keybind calling the IPC (see below).
 
-The status dot next to "Ollama" reflects whether the `ollama` service is running (checked via `sv status ollama`, i.e. a runit-supervised install — adjust `statusProc`'s command in `ollamachat/OllamaChat.qml` if your system manages it differently, e.g. `systemctl is-active ollama`).
+The status dot next to "Ollama" reflects whether Ollama is actually serving requests, checked with a bounded `curl` against the API root rather than `sv status ollama` — on a runit install the supervise dirs are `0700 root:root`, so a plain user always gets "access denied" and the dot would read down forever even with Ollama running fine; hitting the API directly sidesteps that and is the more meaningful check anyway. Adjust `statusProc`'s command in `ollamachat/OllamaChat.qml` if you'd rather check a specific init system instead.
+
+The generate request itself isn't capped with a flat `--max-time`: that would cut off a slower model (e.g. `qwen2.5:3b`, which can legitimately take longer than 30s total between cold model load and a full response on modest hardware) mid-stream just for running long, even while it's actively producing tokens. It's guarded with `--speed-limit 1 --speed-time 30` instead — a stall detector that only aborts on 30s with *zero* bytes received, letting a slow-but-progressing generation run to completion.
 
 On startup it also runs a one-off hardware check (`nvidia-smi` for NVIDIA VRAM, `rocm-smi`/`lspci` for AMD or other dedicated GPUs, falling back to total system RAM when there's no dedicated GPU) and shows a suggested model-size range for the machine under the header. Installed models whose tag matches that range get a `★` in the picker, and the "+ instalar novo modelo..." field's placeholder shows the suggestion too.
 
