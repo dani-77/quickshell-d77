@@ -1,14 +1,21 @@
 #!/bin/sh
 # apply-saved-wallpaper.sh
 #
-# Writes the last wallpaper chosen via the Quickshell wallpaper picker
-# directly into hyprpaper.conf, BEFORE hyprpaper starts. This way
-# hyprpaper launches already showing the right wallpaper, instead of
-# briefly showing the configured default and then switching via IPC.
+# hyprpaper-only preload step. Writes the last wallpaper chosen via the
+# Quickshell wallpaper picker directly into hyprpaper.conf, BEFORE hyprpaper
+# starts. This way hyprpaper launches already showing the right wallpaper,
+# instead of briefly showing the configured default and then switching via
+# IPC.
 #
 # Run this from hyprland.conf BEFORE "exec-once = hyprpaper":
 #   exec-once = sh ~/.config/quickshell/wallpaper/apply-saved-wallpaper.sh
 #   exec-once = hyprpaper
+#
+# If you're using swww or swaybg instead of hyprpaper (on Hyprland, Sway, or
+# any other compositor), this script has nothing to do - those tools have no
+# config-file preload step. Use `set-wallpaper.sh startup` instead, as an
+# exec-once/exec line AFTER the wallpaper daemon has started. See the
+# "Compositor-Agnostic Wallpaper Chooser" section of the top-level README.
 #
 # Rewrites only the "preload" line and the "wallpaper { ... }" block.
 # Every other line in hyprpaper.conf (splash, etc.) is left untouched.
@@ -16,6 +23,10 @@
 # always "fill".
 #
 # Written in plain POSIX sh: no seq, no fractional sleep, no bashisms.
+
+# Nothing to preload if hyprpaper isn't even installed - avoids leaving a
+# stray hyprpaper.conf lying around on setups that use swww/swaybg instead.
+command -v hyprpaper >/dev/null 2>&1 || exit 0
 
 STATE_FILE="$HOME/.cache/quickshell/wallpaper/current"
 CONF_FILE="$HOME/.config/hypr/hyprpaper.conf"

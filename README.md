@@ -86,17 +86,21 @@ Detailed module documentation lives in [`osd/README.md`](osd/README.md).
 ## Compositor-Agnostic Wallpaper Chooser
 
 The shell features a built-in Wallpaper selector written in QML. Under the hood, it delegates all tasks to a helper script `set-wallpaper.sh`, making it fully compositor-agnostic:
-- **Hyprland**: Applies wallpapers via `hyprctl hyprpaper` (with automated preloading).
+- **Hyprland**: Detects whichever wallpaper daemon is actually running (`hyprpaper`, `swww`, or `swaybg`) and drives that one — `hyprctl hyprpaper` IPC for hyprpaper, `swww img` for swww (starting `swww-daemon` first if needed), or a `swaybg` restart. If none is running yet, it falls back to whichever of those is installed.
 - **Sway**: Applies wallpapers natively via `swaymsg output`.
 - **Other Compositors**: Automatically falls back to popular tools like `swww`, `swaybg`, or `feh` depending on which ones are installed.
 
 It is automatically triggered from the wallpaper menu or via IPC.
 
-**Restoring the wallpaper at login** works differently per compositor, since only Hyprland's hyprpaper supports a config-file preload step:
-- **Hyprland**: `apply-saved-wallpaper.sh` rewrites `hyprpaper.conf` *before* hyprpaper starts, so it launches already showing the right wallpaper. Run it from `hyprland.conf` before `exec-once = hyprpaper` (see the script's header for details).
-- **Sway / generic**: there's no preload step, so add `set-wallpaper.sh startup` as an `exec` line in your compositor's config, after the compositor itself has started. It reads the saved path from the state file and reapplies it — a brief default background may flash before this runs.
+**Restoring the wallpaper at login** works differently depending on the wallpaper daemon, since only hyprpaper supports a config-file preload step:
+- **Hyprland + hyprpaper**: `apply-saved-wallpaper.sh` rewrites `hyprpaper.conf` *before* hyprpaper starts, so it launches already showing the right wallpaper. Run it from `hyprland.conf` before `exec-once = hyprpaper` (see the script's header for details). It's a no-op if hyprpaper isn't installed.
+- **Hyprland + swww/swaybg, Sway, or generic**: there's no preload step, so add `set-wallpaper.sh startup` as an `exec-once`/`exec` line in your compositor's config, after the wallpaper daemon itself has started. It reads the saved path from the state file and reapplies it — a brief default background may flash before this runs.
 
 ```text
+# ~/.config/hypr/hyprland.conf (swww setup)
+exec-once = swww-daemon
+exec-once = sh ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
+
 # ~/.config/sway/config
 exec ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
 ```
