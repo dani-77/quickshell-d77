@@ -118,6 +118,8 @@ The generate request itself isn't capped with a flat `--max-time`: that would cu
 
 On startup it also runs a one-off hardware check (`nvidia-smi` for NVIDIA VRAM, `rocm-smi`/`lspci` for AMD or other dedicated GPUs, falling back to total system RAM when there's no dedicated GPU) and shows a suggested model-size range for the machine under the header. Installed models whose tag matches that range get a `★` in the picker, and the "+ install new model..." field's placeholder shows the suggestion too.
 
+If it finds Ollama running with **no models installed at all** (a fresh setup), it auto-pulls the tiny fallback model (`qwen2.5:0.5b`) once, so there's something to talk to without having to already know a model name to type. Attempting the pull doubles as the reachability check — no separate "is there internet" probe — so if the daemon or network isn't actually there, it just reports the failed download the same way a manual install would. A **Cancel** link next to the progress banner stops it (or any manual install) at any point by sending the underlying `curl` a `SIGTERM`.
+
 ## Hyprland-Only Features
 
 While all shell widgets, the launcher, lockscreen, and OSD are fully compatible across Wayland compositors, some integrations are exclusive to **Hyprland**:
