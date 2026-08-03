@@ -107,7 +107,7 @@ exec ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
 
 ## Native Ollama chat
 
-The shell also bundles a native **chat popup** (folder `ollamachat/`) for a locally running [Ollama](https://ollama.com) daemon (`http://127.0.0.1:11434`), talked to via `curl` — no HTTP client libraries needed. It streams the model's response as it arrives, lets you switch between already-installed models or pull a new one straight from the popup ("+ instalar novo modelo...", with live download progress), and remembers the last picked model at `~/.config/ollama-chat/model.conf`.
+The shell also bundles a native **chat popup** (folder `ollamachat/`) for a locally running [Ollama](https://ollama.com) daemon (`http://127.0.0.1:11434`), talked to via `curl` — no HTTP client libraries needed. It streams the model's response as it arrives, lets you switch between already-installed models or pull a new one straight from the popup ("+ install new model...", with live download progress), and remembers the last picked model at `~/.config/ollama-chat/model.conf`. The response area is a read-only `TextEdit`, so the generated text can be selected and copied out with the mouse or keyboard, same as any regular text field.
 
 - Click the green **"AI"** button on the bar, **or**
 - Trigger it via a window manager keybind calling the IPC (see below).
@@ -116,7 +116,7 @@ The status dot next to "Ollama" reflects whether Ollama is actually serving requ
 
 The generate request itself isn't capped with a flat `--max-time`: that would cut off a slower model (e.g. `qwen2.5:3b`, which can legitimately take longer than 30s total between cold model load and a full response on modest hardware) mid-stream just for running long, even while it's actively producing tokens. It's guarded with `--speed-limit 1 --speed-time 30` instead — a stall detector that only aborts on 30s with *zero* bytes received, letting a slow-but-progressing generation run to completion.
 
-On startup it also runs a one-off hardware check (`nvidia-smi` for NVIDIA VRAM, `rocm-smi`/`lspci` for AMD or other dedicated GPUs, falling back to total system RAM when there's no dedicated GPU) and shows a suggested model-size range for the machine under the header. Installed models whose tag matches that range get a `★` in the picker, and the "+ instalar novo modelo..." field's placeholder shows the suggestion too.
+On startup it also runs a one-off hardware check (`nvidia-smi` for NVIDIA VRAM, `rocm-smi`/`lspci` for AMD or other dedicated GPUs, falling back to total system RAM when there's no dedicated GPU) and shows a suggested model-size range for the machine under the header. Installed models whose tag matches that range get a `★` in the picker, and the "+ install new model..." field's placeholder shows the suggestion too.
 
 ## Hyprland-Only Features
 
