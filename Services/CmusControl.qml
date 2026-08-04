@@ -120,9 +120,23 @@ Singleton {
                 root.track   = "—"
                 // Cached env may be stale (e.g. cmus was restarted outside
                 // startHeadless()) — rediscover so the next refresh() works.
-                root._discoverCmusEnv()
+                // Whenever cmus simply isn't running at all (the common
+                // case — not a transient error), this query fails every
+                // time, and calling _discoverCmusEnv() straight back
+                // synchronously chained forever with no delay, spinning
+                // as fast as fork/exec allowed (measured: ~28 cycles/sec,
+                // the dominant source of this shell's idle CPU use).
+                // Waiting a few seconds between retries fixes that while
+                // still picking up cmus starting up promptly enough.
+                _rediscoverRetryTimer.restart()
             }
         }
+    }
+
+    Timer {
+        id: _rediscoverRetryTimer
+        interval: 3000
+        onTriggered: root._discoverCmusEnv()
     }
 
     // ── Track controls ──────────────────────────────────────

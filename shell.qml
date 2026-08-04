@@ -440,27 +440,22 @@ ShellRoot {
     // SYSTEM PROCESSES
     // ══════════════════════════════════════════════════════
 
-    // Reads the current Master volume level (percentage) via ALSA.
+    // Reads the current Master volume level and mute state via ALSA in a
+    // single amixer call — both live on the same "[NN%] ... [on/off]"
+    // line, so there's no need for the two separate amixer invocations
+    // (volume, then mute) this used to run every tick.
     Process {
         id: volProc
-        command: ["sh", "-c", "amixer get Master | grep -Po '\\[\\d+%\\]' | head -1 | tr -d '[]%'"]
+        command: ["sh", "-c", "amixer get Master"]
+        property string buffer: ""
         stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim() !== "")
-                    g.volLevel = parseInt(data.trim())
-            }
+            onRead: data => { volProc.buffer += data + "\n" }
         }
-        Component.onCompleted: running = true
-    }
-
-    // Checks whether the Master channel is muted.
-    Process {
-        id: volMuteCheckProc
-        command: ["sh", "-c", "amixer get Master | grep -q '\\[off\\]' && echo 1 || echo 0"]
-        stdout: SplitParser {
-            onRead: data => {
-                if (data) g.volMuted = (data.trim() === "1")
-            }
+        onExited: {
+            var m = volProc.buffer.match(/\[(\d+)%\]/)
+            if (m) g.volLevel = parseInt(m[1])
+            g.volMuted = /\[off\]/.test(volProc.buffer)
+            volProc.buffer = ""
         }
         Component.onCompleted: running = true
     }
@@ -506,22 +501,22 @@ ShellRoot {
         Component.onCompleted: running = true
     }
 
-    // Reads the battery charge level (falls back to 100 if unavailable).
+    // Reads the battery charge level and charging status together — one
+    // `ls /sys/class/power_supply` lookup and two `cat`s instead of
+    // resolving the battery device twice (once per stat) every tick.
     Process {
         id: batProc
-        command: ["sh", "-c", "bat=$(ls /sys/class/power_supply/ 2>/dev/null | grep -m1 '^BAT'); [ -n \"$bat\" ] && cat /sys/class/power_supply/$bat/capacity 2>/dev/null || echo 100"]
+        command: ["sh", "-c", "bat=$(ls /sys/class/power_supply/ 2>/dev/null | grep -m1 '^BAT'); if [ -n \"$bat\" ]; then cat /sys/class/power_supply/$bat/capacity 2>/dev/null; cat /sys/class/power_supply/$bat/status 2>/dev/null; else echo 100; echo Discharging; fi"]
+        property var lines: []
         stdout: SplitParser {
-            onRead: data => { if (data.trim()) g.batLevel = parseInt(data.trim()) }
+            onRead: data => { batProc.lines.push(data) }
         }
-        Component.onCompleted: running = true
-    }
-
-    // Reads the battery charging status.
-    Process {
-        id: batStatusProc
-        command: ["sh", "-c", "bat=$(ls /sys/class/power_supply/ 2>/dev/null | grep -m1 '^BAT'); [ -n \"$bat\" ] && cat /sys/class/power_supply/$bat/status 2>/dev/null || echo Discharging"]
-        stdout: SplitParser {
-            onRead: data => { g.batCharging = data.trim() === "Charging" }
+        onExited: {
+            if (batProc.lines.length >= 1 && batProc.lines[0].trim())
+                g.batLevel = parseInt(batProc.lines[0])
+            if (batProc.lines.length >= 2)
+                g.batCharging = batProc.lines[1].trim() === "Charging"
+            batProc.lines = []
         }
         Component.onCompleted: running = true
     }
@@ -654,19 +649,28 @@ ShellRoot {
         }
     }
 
-    // Periodically refresh all the polled system stats.
+    // Periodically refresh the polled system stats. Split into two
+    // cadences: cpu/mem/volume actually move second to second, but
+    // battery % and Wi-Fi signal don't — polling those at the same 2s
+    // rate was 3-4 extra process forks (nmcli in particular isn't
+    // cheap) every tick for no visible benefit, forever, even at idle.
     Timer {
         interval: 2000
         running: true
         repeat: true
         onTriggered: {
-            cpuProc.running          = true
-            memProc.running          = true
-            volProc.running          = true
-            volMuteCheckProc.running = true
-            batProc.running          = true
-            batStatusProc.running    = true
-            wifiProc.running         = true
+            cpuProc.running = true
+            memProc.running = true
+            volProc.running = true
+        }
+    }
+    Timer {
+        interval: 8000
+        running: true
+        repeat: true
+        onTriggered: {
+            batProc.running  = true
+            wifiProc.running = true
         }
     }
 
@@ -829,8 +833,7 @@ ShellRoot {
                             if (wheel.angleDelta.y > 0) volUpProc.running = true
                             else                        volDownProc.running = true
                             // Refresh the displayed value immediately.
-                            volProc.running          = true
-                            volMuteCheckProc.running = true
+                            volProc.running = true
                         }
                     }
                 }
