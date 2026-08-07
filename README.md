@@ -1,270 +1,114 @@
-# quickshell-d77
+<p align="center">
+  <img src="assets/icon.png" width="128" alt="quickshell-d77 icon">
+</p>
 
-d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic across Wayland compositors, with native integrations for Hyprland, Sway, and niri.
+<h1 align="center">quickshell-d77</h1>
 
-> **Note on i3**: every surface in this shell (bar, launcher, dashboard, lockscreen, wallpaper picker) is a Wayland layer-shell client (`PanelWindow`/`WlrLayershell`, `WlSessionLock`). i3 is an X11-only window manager with no Wayland compositor, so it cannot host any of these windows — there is no i3 support, and there cannot be one without rewriting the shell's window layer for X11.
+<p align="center">
+  A complete desktop shell for Wayland — bar, app launcher, lockscreen, login screen,
+  wallpaper picker, volume/brightness popup and a local AI chat — built with
+  <a href="https://quickshell.org">Quickshell</a> and themed in Tokyo Night.
+</p>
 
-![sample](sample.png)
-
-To install:
-
-1 - Clone the Repository
-
-```
-git clone https://github.com/dani-77/quickshell-d77.git ~/.config/quickshell
-```
-
-2 - Execute the shell
-
-```
-qs -p ~/.config/quickshell/shell.qml
-```
-
-## Compositor-Agnostic & Workspaces
-
-The shell automatically detects the running Wayland compositor (`Hyprland`, `Sway`, `niri`, or others) at startup:
-- **Hyprland**: Dynamically loads a workspace widget reading `Hyprland.workspaces` and using `hyprctl` for workspace switching. Fixed 1-9 grid.
-- **Sway**: Dynamically loads a workspace widget reading `I3.workspaces` (Sway implements the i3 IPC protocol) and using `swaymsg` to switch workspaces. Fixed 1-9 grid.
-- **niri**: detected via `$NIRI_SOCKET`. Dynamically loads a workspace widget reading `Quickshell.WindowManager` (the generic `ext-workspace-v1` protocol niri implements — no dedicated Quickshell module needed, and no IPC polling either, since it's reactive out of the box). Unlike Hyprland/Sway, this does **not** show a fixed 1-9 grid: niri creates workspaces dynamically instead of preallocating a fixed set, so only the workspaces that actually exist are shown, and switching calls the workspace object's own `activate()` method rather than shelling out to a CLI.
-- **Generic/Other**: Falls back gracefully by omitting the workspace widget, keeping the bar clean.
-
-The logout process also dynamically chooses between `hyprctl dispatch exit`, `swaymsg exit`, `niri msg action quit --skip-confirmation`, or standard login1 session termination (`loginctl terminate-session`) as a last resort.
-
-## Session actions (suspend/reboot/poweroff/logout)
-
-Both the **dashboard** and the **session menu** trigger the same underlying processes for suspend, reboot, poweroff and logout. These go through the freedesktop **login1** D-Bus interface via `loginctl`, which works identically whether it's backed by:
-- **systemd-logind** — the default on systemd distros (e.g. **Arch**), or
-- **elogind** — the standalone logind fork used on non-systemd distros with a Wayland desktop (e.g. **Void**).
-
-No compositor- or distro-specific branching is needed for this: as long as one of the two is running (which any Wayland session with `polkit`/seat management typically already requires), `loginctl suspend/reboot/poweroff` work unmodified. As a second attempt, `systemctl <action>` is also tried for the rare case where `loginctl` isn't on `PATH` but systemd is.
-
-**Why niri gets a native logout instead of going through loginctl**: `niri-session` runs niri as a **systemd `--user` service** and waits on it. Killing the login1 session from the outside (`loginctl terminate-session`) detaches the display but leaves `niri.service` marked active, so the *next* login's `niri-session` refuses to start ("niri session is already running") — a [known niri issue](https://github.com/niri-wm/niri/discussions/2729). Quitting niri natively via IPC lets its own service wrapper notice the exit and clean up `niri.service` correctly, so the shell does that instead of touching logind at all for niri.
-
-**Logout and `$XDG_SESSION_ID`** (the true generic case — no native exit dispatcher, e.g. river, wayfire, labwc): `loginctl terminate-session` targets `$XDG_SESSION_ID` if it's set in the environment, falling back to the `self` magic session ID otherwise. This matters because `self` resolves the caller's session by looking up its PID's cgroup, which fails with `Failed to issue method call: Caller does not belong to any known session.` when the compositor runs as a systemd `--user` service — e.g. Hyprland launched via **UWSM**. In that setup the shell's process lives under `user@<uid>.service` rather than the login `session-N.scope`, so logind can't map "self" back to a session — but these session managers import `$XDG_SESSION_ID` into the environment specifically so tools like this can target the session explicitly instead.
-
-If nothing succeeds, the failure isn't silent: a small red toast appears at the top of the screen for a few seconds with the actual command output (e.g. the `Caller does not belong to...` message above), instead of the button silently doing nothing.
-
-## Native application launcher
-
-The shell ships with a built-in application launcher (Rofi/Fuzzel style), written entirely in QML — no external dependencies. It is already wired into `shell.qml`:
-
-- Click the purple launcher button on the left of the bar, **or**
-- Trigger it via a window manager keybind calling the IPC (see below).
-
-Detailed module documentation lives in [`launcher/README.md`](launcher/README.md).
-
-## Native lockscreen
-
-The shell also bundles a native **lockscreen** module (folder `lockscreen/`, adapted from [quickshell-examples](https://github.com/quickshell-mirror/quickshell-examples)), written entirely in QML and themed to match the rest of the shell (Tokyo Night). It uses a real `WlSessionLock` and validates the password through **PAM**, so the screen stays genuinely locked until a valid password is typed.
-
-- Lock it from the **session menu** (the "Lock" entry), **or**
-- Trigger it via a window manager keybind calling the IPC (see below, suggested `SUPER + L`).
-
-Detailed module documentation lives in [`lockscreen/README.md`](lockscreen/README.md).
-
-## Native greeter (login screen)
-
-The shell also bundles a native **greeter** for [greetd](https://github.com/kennylevinsen/greetd) (folder `greeter/`), inspired by [DankMaterialShell's Greetd module](https://github.com/AvengeMedia/DankMaterialShell/tree/master/quickshell/Modules/Greetd) but trimmed down and adapted to quickshell-d77: same Tokyo Night styling as the lockscreen, and the same QML-drawn `Backdrop` background as the rest of the shell instead of a synced wallpaper image.
-
-It scans both `/usr/share/wayland-sessions` and `/usr/share/xsessions` (X11) for available sessions, and launches whichever one is picked through greetd's IPC — X11 sessions are wrapped with `startx` automatically, since greetd doesn't start an Xorg server on its own.
-
-The greeter itself needs a Wayland compositor to run under before any user session exists; a wrapper script ships for **dwl** (`greeter/assets/greet-dwl.sh`). To host the greeter under a different compositor, copy that script and adapt its startup-command line and quit mechanism.
-
-Unlike the other modules above, the greeter replaces your display manager and needs system-level setup (a `greeter` user, `/etc/greetd/config.toml`, disabling gdm/sddm/lightdm). See [`greeter/README.md`](greeter/README.md) for the full installation steps.
-
-## Native OSD (volume & brightness)
-
-The shell also bundles a native **OSD** module (folder `osd/`, adapted from [quickshell-examples → volume-osd](https://github.com/quickshell-mirror/quickshell-examples/tree/master/volume-osd)). A minimalist overlay (icon + progress bar + value) pops up in the **top-right corner** whenever the volume or screen brightness changes, and fades out after ~2.5 s.
-
-- **Volume** uses the **ALSA** backend (`amixer`) with **mute/unmute** support.
-- **Brightness** uses **brightnessctl**.
-
-Trigger it from your media keys via IPC (see below). A background watcher also catches *external* changes (e.g. another app changing the volume) and shows the OSD anyway.
-
-Detailed module documentation lives in [`osd/README.md`](osd/README.md).
-
-## Compositor-Agnostic Wallpaper Chooser
-
-The shell features a built-in Wallpaper selector written in QML. Under the hood, it delegates all tasks to a helper script `set-wallpaper.sh`, making it fully compositor-agnostic:
-- **Hyprland**: Detects whichever wallpaper daemon is actually running (`hyprpaper`, `swww`, or `swaybg`) and drives that one — `hyprctl hyprpaper` IPC for hyprpaper, `swww img` for swww (starting `swww-daemon` first if needed), or a `swaybg` restart. If none is running yet, it falls back to whichever of those is installed.
-- **Sway**: Applies wallpapers natively via `swaymsg output`.
-- **Other Compositors**: Automatically falls back to popular tools like `swww`, `swaybg`, or `feh` depending on which ones are installed.
-
-It is automatically triggered from the wallpaper menu or via IPC.
-
-**Restoring the wallpaper at login** works differently depending on the wallpaper daemon, since only hyprpaper supports a config-file preload step:
-- **Hyprland + hyprpaper**: `apply-saved-wallpaper.sh` rewrites `hyprpaper.conf` *before* hyprpaper starts, so it launches already showing the right wallpaper. Run it from `hyprland.conf` before `exec-once = hyprpaper` (see the script's header for details). It's a no-op if hyprpaper isn't installed.
-- **Hyprland + swww/swaybg, Sway, or generic**: there's no preload step, so add `set-wallpaper.sh startup` as an `exec-once`/`exec` line in your compositor's config, after the wallpaper daemon itself has started. It reads the saved path from the state file and reapplies it — a brief default background may flash before this runs.
-
-```text
-# ~/.config/hypr/hyprland.conf (swww setup)
-exec-once = swww-daemon
-exec-once = sh ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
-
-# ~/.config/sway/config
-exec ~/.config/quickshell/wallpaper/set-wallpaper.sh startup
-```
-
-## Native Ollama chat
-
-The shell also bundles a native **chat popup** (folder `ollamachat/`) for a locally running [Ollama](https://ollama.com) daemon (`http://127.0.0.1:11434`), talked to via `curl` — no HTTP client libraries needed. It streams the model's response as it arrives, lets you switch between already-installed models or pull a new one straight from the popup ("+ install new model...", with live download progress), and remembers the last picked model at `~/.config/ollama-chat/model.conf`. The response area is a read-only `TextEdit`, so the generated text can be selected and copied out with the mouse or keyboard, same as any regular text field.
-
-- Click the green **"AI"** button on the bar, **or**
-- Trigger it via a window manager keybind calling the IPC (see below).
-
-The status dot next to "Ollama" reflects whether Ollama is actually serving requests, checked with a bounded `curl` against the API root rather than `sv status ollama` — on a runit install the supervise dirs are `0700 root:root`, so a plain user always gets "access denied" and the dot would read down forever even with Ollama running fine; hitting the API directly sidesteps that and is the more meaningful check anyway. Adjust `statusProc`'s command in `ollamachat/OllamaChat.qml` if you'd rather check a specific init system instead.
-
-The generate request itself isn't capped with a flat `--max-time`: that would cut off a slower model (e.g. `qwen2.5:3b`, which can legitimately take longer than 30s total between cold model load and a full response on modest hardware) mid-stream just for running long, even while it's actively producing tokens. It's guarded with `--speed-limit 1 --speed-time 30` instead — a stall detector that only aborts on 30s with *zero* bytes received, letting a slow-but-progressing generation run to completion.
-
-On startup it also runs a one-off hardware check (`nvidia-smi` for NVIDIA VRAM, `rocm-smi`/`lspci` for AMD or other dedicated GPUs, falling back to total system RAM when there's no dedicated GPU) and shows a suggested model-size range for the machine under the header. Installed models whose tag matches that range get a `★` in the picker, and the "+ install new model..." field's placeholder shows the suggestion too.
-
-If it finds Ollama running with **no models installed at all** (a fresh setup), it auto-pulls the tiny fallback model (`qwen2.5:0.5b`) once, so there's something to talk to without having to already know a model name to type. Attempting the pull doubles as the reachability check — no separate "is there internet" probe — so if the daemon or network isn't actually there, it just reports the failed download the same way a manual install would. A **Cancel** link next to the progress banner stops it (or any manual install) at any point by sending the underlying `curl` a `SIGTERM`.
-
-## Hyprland-Only Features
-
-While all shell widgets, the launcher, lockscreen, and OSD are fully compatible across Wayland compositors, some integrations are exclusive to **Hyprland**:
-
-1. **Global Shortcuts Fallback (`GlobalShortcut` in QML)**:
-   The native `GlobalShortcut` bindings in QML rely on Hyprland's global shortcuts Wayland protocol. They are disabled on Sway and other compositors. On those compositors, you must configure keybinds in your WM config file (e.g. `~/.config/sway/config`) calling the Quickshell IPC directly.
-2. **Hyprland Workspace Dispatching**:
-   The custom workspace dispatch options using `hyprctl` only apply when running under Hyprland. Sway uses native workspace focusing commands (`swaymsg workspace`).
+<p align="center">
+  <img src="sample.png" alt="quickshell-d77 sample">
+</p>
 
 ---
 
-## Controlling the shell via IPC (recommended)
+## What is this?
 
-`shell.qml` exposes several Quickshell `IpcHandler` targets so every popup/menu can be triggered from anywhere while the shell is running:
+quickshell-d77 replaces your bar, launcher, lockscreen and other desktop bits with a
+single, consistent set of panels — no mixing and matching Waybar, Rofi, swaylock and a
+dozen scripts. It works out of the box on **Hyprland**, **Sway** and **niri**, and
+degrades gracefully on other Wayland compositors.
 
-| Target        | Functions                 | What it does                              |
-|---------------|---------------------------|-------------------------------------------|
-| `launcher`    | `toggle`, `open`, `close` | Show/hide the application launcher        |
-| `session`     | `toggle`, `open`, `close` | Show/hide the session menu (lock/suspend/reboot/shutdown/logout) |
-| `lockscreen`  | `lock`, `unlock`, `toggle` | Lock the screen (PAM) / unlock / alternate |
-| `osd`         | `volumeUp`, `volumeDown`, `volumeMuteToggle`, `brightnessUp`, `brightnessDown`, `showVolume`, `showBrightness` | Volume (ALSA, with mute) & brightness (brightnessctl) OSD |
-| `dashboard`   | `toggle`, `open`, `close` | Show/hide the quick info dashboard (stats, weather, cmus, session) |
-| `wallpaper`   | `toggle`, `open`, `close`, `reload`, `set <path>`, `random`, `clear` | Show/hide the wallpaper menu; rescan/apply/randomize/clear wallpapers |
-| `musicpicker` | `toggle`, `open`, `close`, `reload`, `play <path>` | Show/hide the Artist/Album picker; rescan `musicDir`; play an album directly |
-| `ollamachat`  | `toggle`, `open`, `close` | Show/hide the Ollama chat popup |
+What you get:
 
-Call them from the command line:
+- **A top bar** — workspaces, clock, tray, quick buttons.
+- **An app launcher** — type to search, `Enter` to launch.
+- **A lockscreen** — locks your session for real (PAM password check).
+- **A login screen (greeter)** — optional, replaces your display manager.
+- **A volume/brightness popup (OSD)** — pops up automatically when you use media keys.
+- **A wallpaper picker** — browse and apply wallpapers, restored automatically on login.
+- **A dashboard** — quick system stats, weather, music controls, power options.
+- **An AI chat popup** — talks to a local [Ollama](https://ollama.com) install, no cloud
+  needed.
 
-```bash
-qs ipc call launcher toggle     # toggle the launcher
-qs ipc call launcher open       # open the launcher
-qs ipc call launcher close      # close the launcher
+Everything is controlled the same way: click a button on the bar, or bind it to a key
+in your compositor's config.
 
-qs ipc call session toggle      # toggle the session menu
-qs ipc call session open        # open the session menu
-qs ipc call session close       # close the session menu
+## Before you install
 
-qs ipc call lockscreen lock     # lock the screen (asks for password via PAM)
-qs ipc call lockscreen unlock   # unlock without a password
-qs ipc call lockscreen toggle   # alternate locked/unlocked
+You need [Quickshell](https://quickshell.org) itself installed and working first —
+this repository is a *configuration* for it, not a replacement.
 
-qs ipc call osd volumeUp           # volume +5% (shows the OSD)
-qs ipc call osd volumeDown         # volume -5%
-qs ipc call osd volumeMuteToggle   # mute / unmute
-qs ipc call osd brightnessUp       # brightness +5%
-qs ipc call osd brightnessDown     # brightness -5%
+Some panels also expect the usual Wayland desktop tools to be present, depending on
+which ones you use: `brightnessctl` (brightness OSD), `amixer`/ALSA (volume OSD), a
+wallpaper daemon such as `swww`/`hyprpaper`/`swaybg` (wallpaper picker), and
+[Ollama](https://ollama.com) running locally (AI chat). Nothing breaks if one of these
+is missing — that one feature just won't do anything until it's installed.
 
-qs ipc call dashboard toggle    # toggle the quick info dashboard
-qs ipc call dashboard open      # open the dashboard
-qs ipc call dashboard close     # close the dashboard
+## Installing
 
-qs ipc call wallpaper toggle     # toggle the wallpaper menu
-qs ipc call wallpaper open       # open the wallpaper menu
-qs ipc call wallpaper close      # close the wallpaper menu
-qs ipc call wallpaper reload     # rescan the wallpaper directory
-qs ipc call wallpaper set /home/daniel/Wallpaper/foo.png  # apply a wallpaper directly
-qs ipc call wallpaper random     # apply a random wallpaper from the scanned list
-qs ipc call wallpaper clear      # remove the active wallpaper (shows the backdrop)
-
-qs ipc call musicpicker toggle   # toggle the Artist/Album picker
-qs ipc call musicpicker open     # open the picker
-qs ipc call musicpicker close    # close the picker
-qs ipc call musicpicker reload   # rescan musicDir
-qs ipc call musicpicker play "/home/daniel/Música/Artist/Album"  # play an album directly
-
-qs ipc call ollamachat toggle   # toggle the Ollama chat popup
-qs ipc call ollamachat open     # open the Ollama chat popup
-qs ipc call ollamachat close    # close the Ollama chat popup
-
-qs ipc show                     # list every target/function exposed
+```sh
+git clone https://github.com/dani-77/quickshell-d77.git ~/.config/quickshell
 ```
 
-### OSD keybinds (media keys)
+Then start it:
 
-Bind your media keys in your window manager configuration:
+```sh
+qs -p ~/.config/quickshell/shell.qml
+```
 
-#### Hyprland (`hyprland.conf`)
+Most people instead add that as an autostart line in their compositor's config, so it
+launches automatically on login — for example in `hyprland.conf`:
+
 ```ini
-bindel = , XF86AudioRaiseVolume,  exec, qs ipc call osd volumeUp
-bindel = , XF86AudioLowerVolume,  exec, qs ipc call osd volumeDown
-bindl  = , XF86AudioMute,         exec, qs ipc call osd volumeMuteToggle
-bindel = , XF86MonBrightnessUp,   exec, qs ipc call osd brightnessUp
-bindel = , XF86MonBrightnessDown, exec, qs ipc call osd brightnessDown
+exec-once = qs -p ~/.config/quickshell/shell.qml
 ```
 
-#### Sway (`~/.config/sway/config`)
-```text
-bindsym --locked XF86AudioRaiseVolume  exec qs ipc call osd volumeUp
-bindsym --locked XF86AudioLowerVolume  exec qs ipc call osd volumeDown
-bindsym --locked XF86AudioMute         exec qs ipc call osd volumeMuteToggle
-bindsym --locked XF86MonBrightnessUp   exec qs ipc call osd brightnessUp
-bindsym --locked XF86MonBrightnessDown exec qs ipc call osd brightnessDown
-```
+## Using it
 
-### Window Manager keybinds (IPC)
+Once it's running, everything is reachable from the bar with the mouse:
 
-This is the recommended way to bind the shell:
+- Click the **launcher button** to open the app launcher.
+- Click the **session button** to lock the screen, suspend, reboot or log out.
+- Click the **wallpaper button** to browse and apply wallpapers.
+- Click the **AI button** to open the chat popup.
+- Change volume/brightness with your usual media keys — a small popup confirms it.
 
-#### Hyprland (`hyprland.conf`)
+For keyboard shortcuts (recommended, so you don't need the mouse for any of this), bind
+a few keys in your compositor's config to call the shell directly:
+
 ```ini
-bind = SUPER, D, exec, qs ipc call launcher toggle      # application launcher
+# ~/.config/hypr/hyprland.conf
+bind = SUPER, D, exec, qs ipc call launcher toggle      # app launcher
 bind = SUPER SHIFT, E, exec, qs ipc call session toggle # session menu
 bind = SUPER, L, exec, qs ipc call lockscreen lock      # lock the screen
-bind = SUPER, Y, exec, qs ipc call wallpaper toggle     # wallpaper menu
+bind = SUPER, Y, exec, qs ipc call wallpaper toggle     # wallpaper picker
 ```
 
-#### Sway (`~/.config/sway/config`)
 ```text
+# ~/.config/sway/config
 bindsym $mod+d exec qs ipc call launcher toggle
 bindsym $mod+Shift+e exec qs ipc call session toggle
 bindsym $mod+l exec qs ipc call lockscreen lock
 bindsym $mod+y exec qs ipc call wallpaper toggle
 ```
 
-> 📖 Full **Hyprland** keybind setup — including **Hyprland with Lua** (generating `hyprland.conf`, `init.lua`, `hyprctl keyword`, `source`) and how to verify the IPC targets (`qs ipc show`) — is in [`KEYBINDS.md`](KEYBINDS.md). That guide is Hyprland-specific; for Sway, the snippets above are the full picture.
+> 💡 Prefer a shorter command? [`qsd77`](https://github.com/dani-77/qsd77) wraps all of
+> this into plain commands like `qsd77 launcher` instead of the full `qs ipc call ...`
+> line above.
 
-### Global shortcuts fallback (Hyprland only)
+## More
 
-`shell.qml` also registers four Quickshell `GlobalShortcut`s (`launcher`, `session`, `lock` and `dashboard`) as a fallback (exclusive to Hyprland). To use them instead of IPC:
+- Full command reference (every panel, every IPC target, Hyprland keybind setup with
+  `GlobalShortcut`) — [`doc/README.md`](doc/README.md) and [`KEYBINDS.md`](KEYBINDS.md).
+- Setting up the login screen — [`greeter/README.md`](greeter/README.md).
+- Individual module docs — [`launcher/`](launcher/README.md),
+  [`lockscreen/`](lockscreen/README.md), [`osd/`](osd/README.md).
 
-```ini
-bind = SUPER, D, global, quickshell:launcher       # application launcher
-bind = SUPER SHIFT, E, global, quickshell:session  # session menu
-bind = SUPER, L, global, quickshell:lock           # lock the screen
-bind = SUPER, I, global, quickshell:dashboard      # quick info dashboard
-```
+## License
 
-The format is `<appid>:<name>` (default `appid` is `quickshell`). See [`KEYBINDS.md`](KEYBINDS.md) for details.
-
-### Launcher keybindings
-
-| Key                | Action                          |
-|--------------------|---------------------------------|
-| Type               | Filter the application list     |
-| `↑` / `↓`          | Move the selection              |
-| `Tab`              | Next item                       |
-| `Enter`            | Launch the selected application |
-| `Esc` / click out  | Close the launcher              |
-
-### Lockscreen keybindings
-
-| Key        | Action                                   |
-|------------|------------------------------------------|
-| Type       | Enter your password                      |
-| `Enter`    | Submit and try to unlock (via PAM)       |
-| Click `Unlock` | Submit and try to unlock             |
-
-Enjoy
+MIT — see [LICENSE](LICENSE).
