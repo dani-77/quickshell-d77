@@ -420,10 +420,57 @@ ShellRoot {
         property int    memUsage:    0
         property int    volLevel:    0
         property bool   volMuted:    false
+        // All read from UPower's DisplayDevice (org.freedesktop.UPower),
+        // via gdbus in batProc — one source for the bar icon and the
+        // tooltip alike, instead of the bar icon reading raw sysfs
+        // (single BAT*, no aggregation) while the tooltip read UPower.
+        // Type 2 == Battery; batPresent tracks UPower's own IsPresent,
+        // together they gate whether the widget shows at all — a
+        // desktop with no battery hides it instead of showing a fake
+        // "100% Discharging".
         property int    batLevel:    100
         property bool   batCharging: false
+        property bool   batPresent:  false
+        property int    batType:     0
+        readonly property bool hasBattery: batPresent && batType === 2
+        // Raw UPower device state (0=Unknown,1=Charging,2=Discharging,
+        // 3=Empty,4=FullyCharged,5=PendingCharge,6=PendingDischarge) and
+        // time estimates in seconds — used by the tooltip.
+        property int    batState:       0
+        property int    batTimeToEmpty: 0
+        property int    batTimeToFull:  0
         property string wifiSSID:    "..."
         property int    wifiSignal:  0
+
+        // "Xh Ymin" (or just "Ymin" under an hour) from a duration in seconds.
+        function batFormatDuration(seconds) {
+            var total = Math.round(seconds / 60)
+            var h = Math.floor(total / 60)
+            var m = total % 60
+            return h > 0 ? (h + "h " + m + "min") : (m + "min")
+        }
+        // Time-remaining line for the battery tooltip.
+        function batTimeText() {
+            if (g.batState === 1) { // Charging
+                return g.batTimeToFull > 0
+                    ? ("Charging — " + g.batFormatDuration(g.batTimeToFull) + " until full")
+                    : "Charging"
+            }
+            if (g.batState === 2) { // Discharging
+                return g.batTimeToEmpty > 0
+                    ? (g.batFormatDuration(g.batTimeToEmpty) + " remaining")
+                    : "On battery"
+            }
+            if (g.batState === 4) return "Fully charged"
+            return "Battery state unknown"
+        }
+        // Mirrors Osd.qml's own power-profile label mapping.
+        function profileLabel(p) {
+            if (p === "performance") return "Performance"
+            if (p === "power-saver") return "Power saver"
+            if (p === "balanced")    return "Balanced"
+            return "Unknown"
+        }
 
         property var lastCpuIdle:  0
         property var lastCpuTotal: 0
@@ -501,21 +548,39 @@ ShellRoot {
         Component.onCompleted: running = true
     }
 
-    // Reads the battery charge level and charging status together — one
-    // `ls /sys/class/power_supply` lookup and two `cat`s instead of
-    // resolving the battery device twice (once per stat) every tick.
+    // Reads UPower's DisplayDevice (org.freedesktop.UPower) via gdbus —
+    // one source for everything battery-related: level, charging state,
+    // presence (so the widget can hide itself on a battery-less
+    // desktop instead of showing a fake "100% Discharging"), and the
+    // time-to-empty/time-to-full estimates used by the tooltip.
+    // `upower -i` was avoided since its output is locale-formatted
+    // (e.g. "2,8 hours" under pt_PT), which grep/awk can't parse
+    // reliably; gdbus returns the raw D-Bus values instead.
     Process {
         id: batProc
-        command: ["sh", "-c", "bat=$(ls /sys/class/power_supply/ 2>/dev/null | grep -m1 '^BAT'); if [ -n \"$bat\" ]; then cat /sys/class/power_supply/$bat/capacity 2>/dev/null; cat /sys/class/power_supply/$bat/status 2>/dev/null; else echo 100; echo Discharging; fi"]
+        command: ["sh", "-c",
+            "d=$(gdbus call --system --dest org.freedesktop.UPower --object-path /org/freedesktop/UPower/devices/DisplayDevice --method org.freedesktop.DBus.Properties.GetAll org.freedesktop.UPower.Device 2>/dev/null); " +
+            "echo \"$d\" | grep -oP \"'Type': <uint32 \\K[0-9]+\" || echo 0; " +
+            "echo \"$d\" | grep -oP \"'IsPresent': <\\K(true|false)\" || echo false; " +
+            "echo \"$d\" | grep -oP \"'Percentage': <\\K[0-9.]+\" || echo 0; " +
+            "echo \"$d\" | grep -oP \"'State': <uint32 \\K[0-9]+\" || echo 0; " +
+            "echo \"$d\" | grep -oP \"'TimeToEmpty': <int64 \\K[0-9]+\" || echo 0; " +
+            "echo \"$d\" | grep -oP \"'TimeToFull': <int64 \\K[0-9]+\" || echo 0"
+        ]
         property var lines: []
         stdout: SplitParser {
             onRead: data => { batProc.lines.push(data) }
         }
         onExited: {
-            if (batProc.lines.length >= 1 && batProc.lines[0].trim())
-                g.batLevel = parseInt(batProc.lines[0])
-            if (batProc.lines.length >= 2)
-                g.batCharging = batProc.lines[1].trim() === "Charging"
+            if (batProc.lines.length >= 6) {
+                g.batType        = parseInt(batProc.lines[0]) || 0
+                g.batPresent     = batProc.lines[1].trim() === "true"
+                g.batLevel       = Math.round(parseFloat(batProc.lines[2])) || 0
+                g.batState       = parseInt(batProc.lines[3]) || 0
+                g.batCharging    = g.batState === 1
+                g.batTimeToEmpty = parseInt(batProc.lines[4]) || 0
+                g.batTimeToFull  = parseInt(batProc.lines[5]) || 0
+            }
             batProc.lines = []
         }
         Component.onCompleted: running = true
@@ -864,10 +929,18 @@ ShellRoot {
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
                 // ── Battery ───────────────────────────────────
-                // Clicking cycles the power profile (power-profiles-daemon)
-                // and shows the result in the OSD.
+                // Hidden on a battery-less desktop (g.hasBattery, from
+                // UPower's DisplayDevice — see batProc). Clicking cycles
+                // the power profile (power-profiles-daemon) and shows
+                // the result in the OSD. Hovering shows a tooltip with
+                // the estimated time to empty/full and the active power
+                // profile (batTooltip, declared at the ShellRoot level
+                // below, next to the bar).
                 RowLayout {
+                    id: batRow
+                    visible: g.hasBattery
                     spacing: 3
+                    property bool hovered: false
                     Text {
                         text: g.batCharging ? "󰂄 "
                             : g.batLevel > 80 ? "󰁹 "
@@ -886,11 +959,14 @@ ShellRoot {
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton
+                        hoverEnabled: true
                         onClicked: osd.cyclePowerProfile()
+                        onEntered: batRow.hovered = true
+                        onExited: batRow.hovered = false
                     }
                 }
 
-                Rectangle { width: 1; height: 18; color: g.colMuted }
+                Rectangle { width: 1; height: 18; color: g.colMuted; visible: g.hasBattery }
 
                 // ── Clock ─────────────────────────────────────
                 Text {
@@ -929,6 +1005,50 @@ ShellRoot {
                         hoverEnabled: true
                         onClicked: g.sessionOpen = !g.sessionOpen
                     }
+                }
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // BATTERY TOOLTIP
+    // ══════════════════════════════════════════════════════
+    // Shown below the bar while hovering batRow (declared inside the
+    // bar's Battery widget above): time to empty/full + active power
+    // profile. LazyLoader keeps it out of existence otherwise.
+    LazyLoader {
+        active: batRow.hovered
+
+        PanelWindow {
+            // Anchored to the top-right corner, near where Battery sits
+            // in the bar's right-hand widget group.
+            anchors.top:   true
+            anchors.right: true
+            margins.top:   60 // bar bottom (10 margin + 40 height) + 10 gap
+            margins.right: 10
+            exclusiveZone: 0
+            color: "transparent"
+
+            implicitWidth:  tooltipLabel.implicitWidth + 24
+            implicitHeight: tooltipLabel.implicitHeight + 16
+
+            // Empty mask → does not block mouse events.
+            mask: Region {}
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 10
+                color: g.colBg
+                border.color: g.colMuted
+                border.width: 1
+
+                Text {
+                    id: tooltipLabel
+                    anchors.centerIn: parent
+                    color: g.colFg
+                    font.family: g.font
+                    font.pixelSize: g.fsize
+                    text: g.batTimeText() + "\nPower profile: " + g.profileLabel(osd.powerProfile)
                 }
             }
         }
