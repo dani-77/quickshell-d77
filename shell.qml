@@ -201,8 +201,9 @@ ShellRoot {
     // ══════════════════════════════════════════════════════
     // Native chat popup for a locally running Ollama daemon
     // (http://127.0.0.1:11434). Lets you switch/install models and
-    // remembers the last picked one. Opened from the bar's "AI" button
-    // or via IPC.
+    // remembers the last picked one. No bar button — the feature isn't
+    // consistent or reliable enough yet to earn permanent bar real estate.
+    // Open it via IPC (see the ollamachat IpcHandler below) or a keybind.
     OllamaChat {
         id: ollamaChat
         colBg:     g.colBg
@@ -785,29 +786,6 @@ ShellRoot {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: appLauncher.toggle()
-                    }
-                }
-
-                Rectangle { width: 1; height: 18; color: g.colMuted }
-
-                // ── Ollama Chat ───────────────────────────────
-                Rectangle {
-                    width: 26
-                    height: 26
-                    radius: 6
-                    color: aiMa.containsMouse ? Qt.lighter(g.colGreen, 1.3) : g.colGreen
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "AI"
-                        font { family: g.font; pixelSize: 9; bold: true }
-                        color: g.colBg
-                    }
-                    MouseArea {
-                        id: aiMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: ollamaChat.toggle()
                     }
                 }
 

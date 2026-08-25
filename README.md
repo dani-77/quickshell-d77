@@ -33,10 +33,9 @@ What you get:
 - **A wallpaper picker** — browse and apply wallpapers, restored automatically on login.
 - **A dashboard** — quick system stats, weather, music controls, power options.
 - **An AI chat popup** — talks to a local [Ollama](https://ollama.com) install, no cloud
-  needed.
-
-Everything is controlled the same way: click a button on the bar, or bind it to a key
-in your compositor's config.
+  needed. No bar button for this one (see [Using it](#using-it)) — everything else is
+  controlled the same way: click a button on the bar, or bind it to a key in your
+  compositor's config.
 
 ## Before you install
 
@@ -75,8 +74,10 @@ Once it's running, everything is reachable from the bar with the mouse:
 - Click the **launcher button** to open the app launcher.
 - Click the **session button** to lock the screen, suspend, reboot or log out.
 - Click the **wallpaper button** to browse and apply wallpapers.
-- Click the **AI button** to open the chat popup.
 - Change volume/brightness with your usual media keys — a small popup confirms it.
+
+The **AI chat popup** has no bar button — it isn't consistent or reliable enough yet
+to earn permanent bar real estate. Open it via IPC or a keybind instead (see below).
 
 For keyboard shortcuts (recommended, so you don't need the mouse for any of this), bind
 a few keys in your compositor's config to call the shell directly:
@@ -87,6 +88,7 @@ bind = SUPER, D, exec, qs ipc call launcher toggle      # app launcher
 bind = SUPER SHIFT, E, exec, qs ipc call session toggle # session menu
 bind = SUPER, L, exec, qs ipc call lockscreen lock      # lock the screen
 bind = SUPER, Y, exec, qs ipc call wallpaper toggle     # wallpaper picker
+bind = SUPER, A, exec, qs ipc call ollamachat toggle    # AI chat
 ```
 
 ```text
