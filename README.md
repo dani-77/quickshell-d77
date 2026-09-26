@@ -54,6 +54,17 @@ is missing — that one feature just won't do anything until it's installed.
 git clone https://github.com/dani-77/quickshell-d77.git ~/.config/quickshell
 ```
 
+Or install it as a system package (to `/usr/share/quickshell/quickshell-d77`,
+started with `qs -c quickshell-d77`):
+
+- **Arch Linux**: in the AUR as
+  [`quickshell-d77`](https://aur.archlinux.org/packages/quickshell-d77)
+  (`yay -S quickshell-d77`); the same `PKGBUILD` is in
+  [`packaging/arch`](packaging/arch/PKGBUILD).
+- **Void Linux**: an `xbps-src` template is in
+  [`packaging/void/quickshell-d77`](packaging/void/quickshell-d77/template)
+  (a copy of the one in [`d77void/srcpkgs-d77`](https://github.com/d77void/srcpkgs-d77)).
+
 Then start it:
 
 ```sh
