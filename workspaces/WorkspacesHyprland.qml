@@ -27,7 +27,7 @@ RowLayout {
             radius: 4
             color: isActive
                 ? globalState.colPurple
-                : (ws ? Qt.rgba(0.48, 0.64, 0.97, 0.25) : "transparent")
+                : (ws ? Qt.alpha(globalState.colBlue, 0.25) : "transparent")
 
             Text {
                 anchors.centerIn: parent

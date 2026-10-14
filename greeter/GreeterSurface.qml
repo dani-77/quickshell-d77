@@ -437,7 +437,7 @@ Rectangle {
             implicitWidth: 30
             implicitHeight: 30
             radius: 8
-            color: poweroffMa.containsMouse ? Qt.rgba(0.97, 0.46, 0.56, 0.2) : Qt.darker(root.colBg, 1.15)
+            color: poweroffMa.containsMouse ? Qt.alpha(root.colRed, 0.2) : Qt.darker(root.colBg, 1.15)
             border.color: root.colMuted
             border.width: 1
 

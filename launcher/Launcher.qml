@@ -242,8 +242,8 @@ PanelWindow {
                     height: 48
                     radius: 8
                     color: index === launcher.selected
-                        ? Qt.rgba(0.73, 0.60, 0.97, 0.22)
-                        : (itemMa.containsMouse ? Qt.rgba(0.48, 0.64, 0.97, 0.12)
+                        ? Qt.alpha(launcher.colPurple, 0.22)
+                        : (itemMa.containsMouse ? Qt.alpha(launcher.colBlue, 0.12)
                                                 : "transparent")
 
                     RowLayout {

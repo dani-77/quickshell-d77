@@ -268,11 +268,11 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius: 12
-        color: Qt.rgba(0.10, 0.11, 0.15, 0.96)
+        color: Qt.alpha(dash.colBg, 0.96)
         border.color: g_border()
         border.width: 1
 
-        function g_border() { return Qt.rgba(0.27, 0.29, 0.42, 0.6) }
+        function g_border() { return Qt.alpha(dash.colMuted, 0.6) }
 
         MouseArea { anchors.fill: parent } // prevent clicks from passing through
 

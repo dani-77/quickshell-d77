@@ -36,7 +36,7 @@ RowLayout {
             width: 22
             height: 22
             radius: 4
-            color: modelData.active ? globalState.colPurple : Qt.rgba(0.48, 0.64, 0.97, 0.25)
+            color: modelData.active ? globalState.colPurple : Qt.alpha(globalState.colBlue, 0.25)
 
             Text {
                 anchors.centerIn: parent

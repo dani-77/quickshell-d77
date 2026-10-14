@@ -4,6 +4,10 @@ import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 
+// Shared palette singleton (config dir): hardcoded Tokyo Night fallback
+// blended with the matugen wallpaper palette (see config/Colors.qml).
+import "config" as Cfg
+
 // Launcher native module (launcher dir).
 // Exposes Launcher
 import "launcher"
@@ -97,6 +101,7 @@ ShellRoot {
         colCyan:   g.colCyan
         colBlue:   g.colBlue
         colPurple: g.colPurple
+        colRed:    g.colRed
         font:      g.font
         fsize:     g.fsize
         wallpaperDir: "$HOME/Wallpaper"
@@ -405,17 +410,19 @@ ShellRoot {
     // ══════════════════════════════════════════════════════
     QtObject {
         id: g
-        property color colBg:     "#1a1b26"
-        property color colFg:     "#a9b1d6"
-        property color colMuted:  "#444b6a"
-        property color colCyan:   "#0db9d7"
-        property color colBlue:   "#7aa2f7"
-        property color colYellow: "#e0af68"
-        property color colGreen:  "#9ece6a"
-        property color colRed:    "#f7768e"
-        property color colPurple: "#bb9af7"
-        property string font:     "JetBrainsMono Nerd Font"
-        property int    fsize:    13
+        // Colors follow config/Colors.qml (Tokyo Night fallback, blended
+        // with the wallpaper palette by the picker's mix slider).
+        property color colBg:     Cfg.Colors.bg
+        property color colFg:     Cfg.Colors.fgDark
+        property color colMuted:  Cfg.Colors.muted
+        property color colCyan:   Cfg.Colors.cyanAccent
+        property color colBlue:   Cfg.Colors.blue
+        property color colYellow: Cfg.Colors.yellow
+        property color colGreen:  Cfg.Colors.green
+        property color colRed:    Cfg.Colors.red
+        property color colPurple: Cfg.Colors.magenta
+        property string font:     Cfg.Colors.font
+        property int    fsize:    Cfg.Colors.fsize
 
         property int    cpuUsage:    0
         property int    memUsage:    0
@@ -969,7 +976,7 @@ ShellRoot {
                     radius: 6
                     color: sessBtnMa.containsMouse || g.sessionOpen
                         ? g.colRed
-                        : Qt.rgba(0.97, 0.46, 0.56, 0.3)
+                        : Qt.alpha(g.colRed, 0.3)
 
                     Text {
                         anchors.centerIn: parent
@@ -1109,7 +1116,7 @@ ShellRoot {
                     Layout.fillWidth: true
                     height: 44
                     radius: 6
-                    color: (ma0.containsMouse || sessionBox.currentIndex === 0) ? Qt.rgba(0.48, 0.64, 0.97, 0.2) : "transparent"
+                    color: (ma0.containsMouse || sessionBox.currentIndex === 0) ? Qt.alpha(g.colBlue, 0.2) : "transparent"
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -1143,7 +1150,7 @@ ShellRoot {
                     Layout.fillWidth: true
                     height: 44
                     radius: 6
-                    color: (ma1.containsMouse || sessionBox.currentIndex === 1) ? Qt.rgba(0.88, 0.69, 0.41, 0.2) : "transparent"
+                    color: (ma1.containsMouse || sessionBox.currentIndex === 1) ? Qt.alpha(g.colYellow, 0.2) : "transparent"
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -1177,7 +1184,7 @@ ShellRoot {
                     Layout.fillWidth: true
                     height: 44
                     radius: 6
-                    color: (ma2.containsMouse || sessionBox.currentIndex === 2) ? Qt.rgba(0.88, 0.69, 0.41, 0.2) : "transparent"
+                    color: (ma2.containsMouse || sessionBox.currentIndex === 2) ? Qt.alpha(g.colYellow, 0.2) : "transparent"
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -1211,7 +1218,7 @@ ShellRoot {
                     Layout.fillWidth: true
                     height: 44
                     radius: 6
-                    color: (ma3.containsMouse || sessionBox.currentIndex === 3) ? Qt.rgba(0.97, 0.46, 0.56, 0.2) : "transparent"
+                    color: (ma3.containsMouse || sessionBox.currentIndex === 3) ? Qt.alpha(g.colRed, 0.2) : "transparent"
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -1245,7 +1252,7 @@ ShellRoot {
                     Layout.fillWidth: true
                     height: 44
                     radius: 6
-                    color: (ma4.containsMouse || sessionBox.currentIndex === 4) ? Qt.rgba(0.27, 0.29, 0.42, 0.5) : "transparent"
+                    color: (ma4.containsMouse || sessionBox.currentIndex === 4) ? Qt.alpha(g.colMuted, 0.5) : "transparent"
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
