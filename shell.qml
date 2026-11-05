@@ -804,11 +804,12 @@ ShellRoot {
                     source: {
                         if (compositor === "hyprland") return "workspaces/WorkspacesHyprland.qml";
                         if (compositor === "sway") return "workspaces/WorkspacesSway.qml";
-                        if (compositor === "niri") return "workspaces/WorkspacesNiri.qml";
-                        return "";
+                        return "workspaces/WorkspacesExt.qml";
                     }
                     onLoaded: {
                         item.globalState = g;
+                        if (item.hasOwnProperty("screen"))
+                            item.screen = Qt.binding(() => bar.screen);
                     }
                 }
 
