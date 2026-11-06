@@ -114,6 +114,10 @@ bindsym $mod+y exec qs ipc call wallpaper toggle
 > this into plain commands like `qsd77 launcher` instead of the full `qs ipc call ...`
 > line above.
 
+On wasp and spitfire, [Kantele](https://github.com/dani-77/kantele) can set up the
+same keys for all the d77 shells: see its
+[shell keys map](https://github.com/dani-77/kantele/blob/main/doc/shell-keys.md).
+
 ## More
 
 - Full command reference (every panel, every IPC target, Hyprland keybind setup with
