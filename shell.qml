@@ -447,6 +447,7 @@ ShellRoot {
         property int    batState:       0
         property int    batTimeToEmpty: 0
         property int    batTimeToFull:  0
+        property bool   networkWired: false
         property string wifiSSID:    "..."
         property int    wifiSignal:  0
 
@@ -594,14 +595,25 @@ ShellRoot {
         Component.onCompleted: running = true
     }
 
-    // Reads the currently connected Wi-Fi SSID and signal quality
-    // (shows "Disconnected" if none).
+    // Wired takes priority over Wi-Fi, matching utumno's network widget.
+    // If neither is active, the bar shows "Disconnected".
     Process {
-        id: wifiProc
-        command: ["sh", "-c", "LANG=C nmcli -t -f active,ssid,signal dev wifi 2>/dev/null | grep -m1 '^yes' || echo 'no::0'"]
+        id: networkProc
+        command: ["sh", "-c",
+            "if LANG=C nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then " +
+            "echo wired; " +
+            "else LANG=C nmcli -t -f active,ssid,signal dev wifi 2>/dev/null | grep -m1 '^yes' || echo 'no::0'; fi"
+        ]
         stdout: SplitParser {
             onRead: data => {
                 var line = data.trim()
+                if (line === "wired") {
+                    g.networkWired = true
+                    g.wifiSSID = ""
+                    g.wifiSignal = 0
+                    return
+                }
+                g.networkWired = false
                 var parts = line !== "" ? line.split(":") : []
                 if (parts.length >= 3 && parts[1] !== "") {
                     g.wifiSSID   = parts[1]
@@ -743,7 +755,7 @@ ShellRoot {
         repeat: true
         onTriggered: {
             batProc.running  = true
-            wifiProc.running = true
+            networkProc.running = true
         }
     }
 
@@ -896,12 +908,14 @@ ShellRoot {
                 RowLayout {
                     spacing: 3
                     Text {
-                        text: g.wifiSSID === "Disconnected" ? "󰤭 " : "󰤨 "
+                        text: g.networkWired ? "󰈀 "
+                            : g.wifiSSID === "Disconnected" ? "󰤭 " : "󰤨 "
                         font { family: g.font; pixelSize: g.fsize + 1 }
                         color: g.wifiSSID === "Disconnected" ? g.colRed : g.colBlue
                     }
                     Text {
-                        text: g.wifiSSID === "Disconnected" ? g.wifiSSID : g.wifiSSID + " " + g.wifiSignal + "%"
+                        text: g.networkWired ? "wired"
+                            : g.wifiSSID === "Disconnected" ? g.wifiSSID : g.wifiSSID + " " + g.wifiSignal + "%"
                         font { family: g.font; pixelSize: g.fsize }
                         color: g.colFg
                     }
