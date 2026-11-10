@@ -212,11 +212,11 @@ PanelWindow {
         }
     }
 
-    // Network state (wifi / wired / offline).
+    // Network state (wired / wifi / offline), matching the bar's priority.
     Process {
         id: netProc
         running: false
-        command: ["sh", "-c", 'for i in /sys/class/net/*; do ifc=$(basename "$i"); if [ -d "$i/wireless" ]; then ssid=$(iw dev "$ifc" link 2>/dev/null | grep "SSID:" | head -1 | cut -d: -f2-); ssid="${ssid# }"; if [ -n "$ssid" ]; then echo "wifi|Connected to $ssid"; exit 0; fi; fi; done; for i in /sys/class/net/*; do ifc=$(basename "$i"); [ "$ifc" = "lo" ] && continue; [ -d "$i/wireless" ] && continue; [ -e "$i/device" ] || continue; if [ -f "$i/carrier" ] && [ "$(cat "$i/carrier" 2>/dev/null)" = "1" ]; then echo "wired|Connected ($ifc)"; exit 0; fi; done; echo "offline|Network configuration"']
+        command: ["sh", "-c", 'for i in /sys/class/net/*; do ifc=$(basename "$i"); [ "$ifc" = "lo" ] && continue; [ -d "$i/wireless" ] && continue; [ -e "$i/device" ] || continue; if [ -f "$i/carrier" ] && [ "$(cat "$i/carrier" 2>/dev/null)" = "1" ]; then echo "wired|Connected ($ifc)"; exit 0; fi; done; for i in /sys/class/net/*; do ifc=$(basename "$i"); if [ -d "$i/wireless" ]; then ssid=$(iw dev "$ifc" link 2>/dev/null | grep "SSID:" | head -1 | cut -d: -f2-); ssid="${ssid# }"; if [ -n "$ssid" ]; then echo "wifi|Connected to $ssid"; exit 0; fi; fi; done; echo "offline|Network configuration"']
         stdout: SplitParser {
             onRead: data => {
                 if (!data) return
