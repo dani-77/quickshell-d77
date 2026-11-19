@@ -42,6 +42,14 @@ import "backdrop"
 import "ollamachat"
 
 ShellRoot {
+    id: shellRoot
+
+    // Shared by every bar (one per screen) and the windows placed below them.
+    readonly property int barMargin: 10
+    // The screen whose bar has the pointer over its battery widget, or null:
+    // the battery tooltip opens on that screen.
+    property var batteryHoverScreen: null
+
     // Note: i3 is deliberately not detected here. Every window in this shell
     // (bar, launcher, dashboard, lockscreen, wallpaper picker) is a Wayland
     // layer-shell surface (PanelWindow/WlrLayershell, WlSessionLock), which
@@ -173,8 +181,8 @@ ShellRoot {
         // this window below that zone before applying margins.top.
         // So using the bar's own margins.top here is enough to leave
         // the same gap the bar has relative to the screen.
-        marginTop:  bar.margins.top
-        marginLeft: bar.margins.left
+        marginTop:  shellRoot.barMargin
+        marginLeft: shellRoot.barMargin
 
         onLockRequested:        lockScreen.lock()
         onLogoutRequested:      logoutProc.running = true
@@ -762,14 +770,21 @@ ShellRoot {
     // ══════════════════════════════════════════════════════
     // BAR
     // ══════════════════════════════════════════════════════
+    // One bar per screen; everything else (launcher, dashboard, popups)
+    // stays single.
+    Variants {
+        model: Quickshell.screens
+
     PanelWindow {
         id: bar
+        required property var modelData
+        screen: modelData
         anchors.top:   true
         anchors.left:  true
         anchors.right: true
-        margins.right: 10
-        margins.left:  10
-        margins.top:   10
+        margins.right: shellRoot.barMargin
+        margins.left:  shellRoot.barMargin
+        margins.top:   shellRoot.barMargin
         implicitHeight: 40
         // Transparent window so the rounded background Rectangle below
         // defines the visible shape of the bar.
@@ -961,8 +976,15 @@ ShellRoot {
                         acceptedButtons: Qt.LeftButton
                         hoverEnabled: true
                         onClicked: osd.cyclePowerProfile()
-                        onEntered: batRow.hovered = true
-                        onExited: batRow.hovered = false
+                        onEntered: {
+                            batRow.hovered = true
+                            shellRoot.batteryHoverScreen = bar.screen
+                        }
+                        onExited: {
+                            batRow.hovered = false
+                            if (shellRoot.batteryHoverScreen === bar.screen)
+                                shellRoot.batteryHoverScreen = null
+                        }
                     }
                 }
 
@@ -1009,6 +1031,7 @@ ShellRoot {
             }
         }
     }
+    } // Variants (one bar per screen)
 
     // ══════════════════════════════════════════════════════
     // BATTERY TOOLTIP
@@ -1017,9 +1040,10 @@ ShellRoot {
     // bar's Battery widget above): time to empty/full + active power
     // profile. LazyLoader keeps it out of existence otherwise.
     LazyLoader {
-        active: batRow.hovered
+        active: shellRoot.batteryHoverScreen !== null
 
         PanelWindow {
+            screen: shellRoot.batteryHoverScreen
             // Anchored to the top-right corner, near where Battery sits
             // in the bar's right-hand widget group.
             anchors.top:   true
