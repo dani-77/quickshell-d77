@@ -14,7 +14,7 @@ depends=('quickshell' 'power-profiles-daemon' 'alsa-utils' 'alsa-tools'
 makedepends=('rsync')
 optdepends=('matugen: wallpaper-based color palette')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('76cd490e416eb63502d9151429674febdb86c3ad0948ed2654b8b883337c375d')
 
 package() {
     cd "$pkgname-$pkgver"
