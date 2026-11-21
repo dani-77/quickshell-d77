@@ -843,35 +843,51 @@ ShellRoot {
                 Item { Layout.fillWidth: true }
 
                 // ── CPU ───────────────────────────────────────
-                RowLayout {
-                    spacing: 3
-                    Text {
-                        text: " "
-                        font { family: g.font; pixelSize: g.fsize + 1 }
-                        color: g.colYellow
+                Item {
+                    implicitWidth: cpuRow.implicitWidth
+                    implicitHeight: cpuRow.implicitHeight
+                    RowLayout {
+                        id: cpuRow
+                        anchors.fill: parent
+                        spacing: 3
+                        Text {
+                            text: " "
+                            font { family: g.font; pixelSize: g.fsize + 1 }
+                            color: g.colYellow
+                        }
+                        Text {
+                            text: g.cpuUsage + "%"
+                            font { family: g.font; pixelSize: g.fsize }
+                            color: g.cpuUsage > 80 ? g.colRed : g.cpuUsage > 50 ? g.colYellow : g.colGreen
+                        }
                     }
-                    Text {
-                        text: g.cpuUsage + "%"
-                        font { family: g.font; pixelSize: g.fsize }
-                        color: g.cpuUsage > 80 ? g.colRed : g.cpuUsage > 50 ? g.colYellow : g.colGreen
-                    }
+                    Process { id: cpuMonitorProc; command: [Quickshell.shellDir + "/monitor/d77-monitor", "cpu"] }
+                    MouseArea { anchors.fill: parent; onClicked: cpuMonitorProc.running = true }
                 }
 
                 Rectangle { width: 1; height: 18; color: g.colMuted }
 
                 // ── RAM ───────────────────────────────────────
-                RowLayout {
-                    spacing: 3
-                    Text {
-                        text: "  "
-                        font { family: g.font; pixelSize: g.fsize + 1 }
-                        color: g.colCyan
+                Item {
+                    implicitWidth: ramRow.implicitWidth
+                    implicitHeight: ramRow.implicitHeight
+                    RowLayout {
+                        id: ramRow
+                        anchors.fill: parent
+                        spacing: 3
+                        Text {
+                            text: "  "
+                            font { family: g.font; pixelSize: g.fsize + 1 }
+                            color: g.colCyan
+                        }
+                        Text {
+                            text: g.memUsage + "%"
+                            font { family: g.font; pixelSize: g.fsize }
+                            color: g.memUsage > 80 ? g.colRed : g.memUsage > 60 ? g.colYellow : g.colCyan
+                        }
                     }
-                    Text {
-                        text: g.memUsage + "%"
-                        font { family: g.font; pixelSize: g.fsize }
-                        color: g.memUsage > 80 ? g.colRed : g.memUsage > 60 ? g.colYellow : g.colCyan
-                    }
+                    Process { id: ramMonitorProc; command: [Quickshell.shellDir + "/monitor/d77-monitor", "memory"] }
+                    MouseArea { anchors.fill: parent; onClicked: ramMonitorProc.running = true }
                 }
 
                 Rectangle { width: 1; height: 18; color: g.colMuted }

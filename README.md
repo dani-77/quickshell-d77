@@ -26,6 +26,7 @@ degrades gracefully on other Wayland compositors.
 What you get:
 
 - **A top bar** — workspaces, clock, tray, quick buttons.
+- **A centered system monitor** — click CPU or RAM to toggle the shared Eww panel, backed by `dgop` and the Matugen palette.
 - **An app launcher** — type to search, `Enter` to launch.
 - **A lockscreen** — locks your session for real (PAM password check).
 - **A login screen (greeter)** — optional, replaces your display manager.
@@ -47,6 +48,8 @@ which ones you use: `brightnessctl` (brightness OSD), `amixer`/ALSA (volume OSD)
 wallpaper daemon such as `swww`/`hyprpaper`/`swaybg` (wallpaper picker), and
 [Ollama](https://ollama.com) running locally (AI chat). Nothing breaks if one of these
 is missing — that one feature just won't do anything until it's installed.
+
+The system monitor uses `eww` and `dgop`; the packages declare both dependencies. Its script and Eww configuration live in the `monitor/` directory and are installed with the shell by the Makefile.
 
 ## Installing
 
