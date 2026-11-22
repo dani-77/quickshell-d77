@@ -1,7 +1,7 @@
 # Maintainer: Daniel Azevedo <daniazevedo77@posteo.net>
 
 pkgname=quickshell-d77
-pkgver=1.8.0
+pkgver=1.8.1
 pkgrel=1
 pkgdesc="Quickshell d77 shell for Wayland compositors"
 arch=('any')
