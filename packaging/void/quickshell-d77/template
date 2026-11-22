@@ -1,6 +1,6 @@
 # Template file for 'quickshell-d77'
 pkgname=quickshell-d77
-version=1.8.0
+version=1.8.1
 revision=1
 build_style=gnu-makefile
 hostmakedepends="make rsync"
