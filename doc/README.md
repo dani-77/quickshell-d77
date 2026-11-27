@@ -1,5 +1,12 @@
 # quickshell-d77 — technical documentation
 
+> [!IMPORTANT]
+> **This repository is archived.** quickshell-d77 is no longer maintained: everything it
+> had — bar, launcher, lockscreen, greeter, dashboard, music picker, wallpaper picker, OSD
+> and AI chat — now lives in **[Utumno](https://github.com/dani-77/utumno)**, which is
+> the d77 Quickshell shell going forward. Please use Utumno instead
+> (`yay -S utumno` on Arch, `xbps-install utumno` from the d77void repo on Void).
+
 > Looking to install or use quickshell-d77? See the [root README](../README.md) instead.
 
 d77-shell is a simple QT desktop shell built on top of Quickshell. It is designed to be compositor-agnostic across Wayland compositors, with native integrations for Hyprland, Sway, and niri.

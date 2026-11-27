@@ -1,5 +1,12 @@
 # Keybinds (Hyprland) — quickshell-d77
 
+> [!IMPORTANT]
+> **This repository is archived.** quickshell-d77 is no longer maintained: everything it
+> had — bar, launcher, lockscreen, greeter, dashboard, music picker, wallpaper picker, OSD
+> and AI chat — now lives in **[Utumno](https://github.com/dani-77/utumno)**, which is
+> the d77 Quickshell shell going forward. Please use Utumno instead
+> (`yay -S utumno` on Arch, `xbps-install utumno` from the d77void repo on Void).
+
 > This guide is **Hyprland-only**. For Sway, see the "Window Manager keybinds"
 > and "OSD keybinds" sections in the main [`README.md`](README.md) — they
 > cover the full Sway setup, there is no separate Sway keybinds doc.
